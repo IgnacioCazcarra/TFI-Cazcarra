@@ -1,2 +1,2 @@
 # TFI-Cazcarra
-Converting ER Diagrams to .slq scripts using neural networks.
+Converting ER Diagrams to .sql scripts using neural networks.
