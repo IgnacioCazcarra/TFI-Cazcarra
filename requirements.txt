@@ -9,3 +9,6 @@ requests
 GoogleImageScraper
 labelme
 opencv-python
+torch
+torchvision
+torchmetrics
