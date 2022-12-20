@@ -8,6 +8,7 @@ from . import utils
 from .coco_eval import CocoEvaluator
 from .coco_utils import get_coco_api_from_dataset
 
+
 def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, scaler=None):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -25,14 +26,14 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, sc
 
     for images, targets in metric_logger.log_every(data_loader, print_freq, header):
         images = list(image.to(device) for image in images)
-        targets = [{k: v.to(device) for k, v in list(t.items())} for t in targets]
+        targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
         with torch.cuda.amp.autocast(enabled=scaler is not None):
             loss_dict = model(images, targets)
-            losses = sum(loss for loss in list(loss_dict.values()))
+            losses = sum(loss for loss in loss_dict.values())
 
         # reduce losses over all GPUs for logging purposes
         loss_dict_reduced = utils.reduce_dict(loss_dict)
-        losses_reduced = sum(loss for loss in list(loss_dict_reduced.values()))
+        losses_reduced = sum(loss for loss in loss_dict_reduced.values())
 
         loss_value = losses_reduced.item()
 
@@ -56,7 +57,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, sc
         metric_logger.update(loss=losses_reduced, **loss_dict_reduced)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
 
-    return metric_logger
+    return metric_logger, loss_value
 
 
 def _get_iou_types(model):
@@ -93,7 +94,7 @@ def evaluate(model, data_loader, device):
         model_time = time.time()
         outputs = model(images)
 
-        outputs = [{k: v.to(cpu_device) for k, v in list(t.items())} for t in outputs]
+        outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
         model_time = time.time() - model_time
 
         res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
@@ -104,7 +105,7 @@ def evaluate(model, data_loader, device):
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
-    print(("Averaged stats:", metric_logger))
+    print("Averaged stats:", metric_logger)
     coco_evaluator.synchronize_between_processes()
 
     # accumulate predictions from all images

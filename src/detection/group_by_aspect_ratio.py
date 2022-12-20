@@ -2,7 +2,7 @@ import bisect
 import copy
 import math
 from collections import defaultdict
-from itertools import repeat, chain
+from itertools import chain, repeat
 
 import numpy as np
 import torch
@@ -194,10 +194,3 @@ def create_aspect_ratio_groups(dataset, k=0):
     print(f"Using {fbins} as bins for aspect ratio quantization")
     print(f"Count of instances per bin: {counts}")
     return groups
-© 2022 GitHub, Inc.
-Terms
-Privacy
-Security
-Status
-Docs
-C

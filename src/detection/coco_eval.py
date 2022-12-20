@@ -3,11 +3,11 @@ import io
 from contextlib import redirect_stdout
 
 import numpy as np
-import pycocotools.mask as mask_util
+from .pycocotools import mask as mask_util
 import torch
 from . import utils
-from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
+from .pycocotools.coco import COCO
+from .pycocotools.cocoeval import COCOeval
 
 
 class CocoEvaluator:
@@ -47,11 +47,11 @@ class CocoEvaluator:
             create_common_coco_eval(self.coco_eval[iou_type], self.img_ids, self.eval_imgs[iou_type])
 
     def accumulate(self):
-        for coco_eval in list(self.coco_eval.values()):
+        for coco_eval in self.coco_eval.values():
             coco_eval.accumulate()
 
     def summarize(self):
-        for iou_type, coco_eval in list(self.coco_eval.items()):
+        for iou_type, coco_eval in self.coco_eval.items():
             print(f"IoU metric: {iou_type}")
             coco_eval.summarize()
 
@@ -66,7 +66,7 @@ class CocoEvaluator:
 
     def prepare_for_coco_detection(self, predictions):
         coco_results = []
-        for original_id, prediction in list(predictions.items()):
+        for original_id, prediction in predictions.items():
             if len(prediction) == 0:
                 continue
 
@@ -90,7 +90,7 @@ class CocoEvaluator:
 
     def prepare_for_coco_segmentation(self, predictions):
         coco_results = []
-        for original_id, prediction in list(predictions.items()):
+        for original_id, prediction in predictions.items():
             if len(prediction) == 0:
                 continue
 
@@ -124,7 +124,7 @@ class CocoEvaluator:
 
     def prepare_for_coco_keypoint(self, predictions):
         coco_results = []
-        for original_id, prediction in list(predictions.items()):
+        for original_id, prediction in predictions.items():
             if len(prediction) == 0:
                 continue
 

@@ -1,12 +1,17 @@
 r"""PyTorch Detection Training.
+
 To run in a multi-gpu environment, use the distributed launcher::
+
     python -m torch.distributed.launch --nproc_per_node=$NGPU --use_env \
         train.py ... --world-size $NGPU
+
 The default hyperparameters are tuned for training on 8 gpus and 2 images per gpu.
     --lr 0.02 --batch-size 2 --world-size 8
 If you use different number of gpus, the learning rate should be changed to 0.02/8*$NGPU.
+
 On top of that, for training Faster/Mask R-CNN, the default hyperparameters are
     --epochs 26 --lr-steps 16 22 --aspect-ratio-group-factor 3
+
 Also, if you train Keypoint R-CNN, the default hyperparameters are
     --epochs 46 --lr-steps 36 43 --aspect-ratio-group-factor 3
 Because the number of images is smaller in the person keypoint subset of COCO,
@@ -22,10 +27,17 @@ import torch.utils.data
 import torchvision
 import torchvision.models.detection
 import torchvision.models.detection.mask_rcnn
-from . import utils
-from .coco_utils import get_coco, get_coco_kp
-from .engine import train_one_epoch, evaluate
-from .group_by_aspect_ratio import GroupedBatchSampler, create_aspect_ratio_groups
+import utils
+from coco_utils import get_coco, get_coco_kp
+from engine import evaluate, train_one_epoch
+from group_by_aspect_ratio import create_aspect_ratio_groups, GroupedBatchSampler
+from torchvision.transforms import InterpolationMode
+from transforms import SimpleCopyPaste
+
+
+def copypaste_collate_fn(batch):
+    copypaste = SimpleCopyPaste(blending=True, resize_interpolation=InterpolationMode.BILINEAR)
+    return copypaste(*utils.collate_fn(batch))
 
 
 def get_dataset(name, image_set, transform, data_path):
@@ -140,6 +152,13 @@ def get_args_parser(add_help=True):
     # Mixed precision training parameters
     parser.add_argument("--amp", action="store_true", help="Use torch.cuda.amp for mixed precision training")
 
+    # Use CopyPaste augmentation training parameter
+    parser.add_argument(
+        "--use-copypaste",
+        action="store_true",
+        help="Use CopyPaste data augmentation. Works only with data-augmentation='lsj'.",
+    )
+
     return parser
 
 
@@ -175,8 +194,15 @@ def main(args):
     else:
         train_batch_sampler = torch.utils.data.BatchSampler(train_sampler, args.batch_size, drop_last=True)
 
+    train_collate_fn = utils.collate_fn
+    if args.use_copypaste:
+        if args.data_augmentation != "lsj":
+            raise RuntimeError("SimpleCopyPaste algorithm currently only supports the 'lsj' data augmentation policies")
+
+        train_collate_fn = copypaste_collate_fn
+
     data_loader = torch.utils.data.DataLoader(
-        dataset, batch_sampler=train_batch_sampler, num_workers=args.workers, collate_fn=utils.collate_fn
+        dataset, batch_sampler=train_batch_sampler, num_workers=args.workers, collate_fn=train_collate_fn
     )
 
     data_loader_test = torch.utils.data.DataLoader(
@@ -190,8 +216,8 @@ def main(args):
     if "rcnn" in args.model:
         if args.rpn_score_thresh is not None:
             kwargs["rpn_score_thresh"] = args.rpn_score_thresh
-    model = torchvision.models.detection.__dict__[args.model](
-        weights=args.weights, weights_backbone=args.weights_backbone, num_classes=num_classes, **kwargs
+    model = torchvision.models.get_model(
+        args.model, weights=args.weights, weights_backbone=args.weights_backbone, num_classes=num_classes, **kwargs
     )
     model.to(device)
     if args.distributed and args.sync_bn:
