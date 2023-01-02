@@ -12,3 +12,4 @@ opencv-python
 torch
 torchvision
 torchmetrics
+image_bbox_slicer
