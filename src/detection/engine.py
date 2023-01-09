@@ -35,7 +35,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, sc
         loss_dict_reduced = utils.reduce_dict(loss_dict)
         losses_reduced = sum(loss for loss in loss_dict_reduced.values())
 
-        loss_value = losses_reduced.item()
+        loss_value = losses_reduced.detach().item()
 
         if not math.isfinite(loss_value):
             print(f"Loss is {loss_value}, stopping training")
@@ -72,6 +72,7 @@ def _get_iou_types(model):
     return iou_types
 
 
+@torch.no_grad()
 @torch.inference_mode()
 def evaluate(model, data_loader, device):
     n_threads = torch.get_num_threads()
