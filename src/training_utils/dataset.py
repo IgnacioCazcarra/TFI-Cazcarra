@@ -36,8 +36,8 @@ class PennFudanDataset(object):
         self.csv = csv
         self.transforms = transforms
         self.images_dir = images_dir
-        self.imgs = [i for i in os.listdir(self.images_dir) \
-                       if os.path.join(self.images_dir, i) in self.csv['image_path'].unique()]
+        self.imgs = sorted([i for i in os.listdir(self.images_dir) \
+                       if os.path.join(self.images_dir, i) in self.csv['image_path'].unique()])
 
     def __getitem__(self, idx):
         img_path = self.imgs[idx]

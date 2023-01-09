@@ -34,11 +34,11 @@ def get_default_optimizer(params):
 
 
 def get_default_lr_scheduler(optimizer):
-    return torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+    return torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     
 
 def train_model(model, data_loader, data_loader_test, params, device, num_epochs=30, 
-                optimizer=None, lr_scheduler=None, override_path=None):
+                optimizer=None, lr_scheduler=None, override_path_final=None, override_path_best=None):
     save_best_model = SaveBestModel()
     if not optimizer:
         optimizer = get_default_optimizer(params)
@@ -51,11 +51,12 @@ def train_model(model, data_loader, data_loader_test, params, device, num_epochs
         del metric_logger # Para no ocupar espacio, por las dudas
         lr_scheduler.step()
         evaluate(model, data_loader_test, device=device)
-        save_best_model(loss_value, epoch, model, override_path=override_path)
+        save_best_model(loss_value, epoch, model, override_path=override_path_best)
     
     model_name = model.__class__.__name__.lower()
-    path_to_save = f"{PATH}/data/models/model_{model_name}_final.pt"
-    save_model(path_to_save=path_to_save, model=model, epoch=epoch, 
+    if not override_path_final:
+        override_path_final = f"{PATH}/data/models/model_{model_name}_final.pt"
+    save_model(path_to_save=override_path_final, model=model, epoch=epoch, 
                loss_value=loss_value)
 
     
@@ -64,11 +65,13 @@ def save_model(path_to_save, model, epoch, loss_value):
     Guarda el modelo
     '''
     print("Guardando...")
-    torch.save({
-            'epoch': epoch+1,
-            'model_state_dict': model.state_dict(),
-            'loss': loss_value,
-            }, path_to_save)
+    model_scripted = torch.jit.script(model)
+    model_scripted.save(path_to_save)
+#     torch.save({
+#             'epoch': epoch+1,
+#             'model_state_dict': model.state_dict(),
+#             'loss': loss_value,
+#             }, path_to_save)
     print(f"Modelo guardado en {path_to_save}")
     
     
