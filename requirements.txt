@@ -13,3 +13,6 @@ torch
 torchvision
 torchmetrics
 image_bbox_slicer
+paddlepaddle
+paddleocr
+jellyfish
