@@ -49,8 +49,8 @@ def poly_detection(img_path, tablas, cardinalidades):
     edges = cv2.drawContours(edges, contours, -1, (255, 255, 255), -1)
     edges = cv2.cvtColor(edges, cv2.COLOR_BGR2GRAY)
         
-    minLineLength = 500
-    maxLineGap = -1
+    minLineLength = 5
+    maxLineGap = 19
     
     for t in tablas:
         edges = cv2.rectangle(edges, t[:2], t[2:], color=(0,0,0), thickness=-1)
@@ -59,7 +59,8 @@ def poly_detection(img_path, tablas, cardinalidades):
     
     
 #     display(Image.fromarray(edges))
-    lines = cv2.HoughLinesP(edges,cv2.HOUGH_PROBABILISTIC, np.pi/180, 10, minLineLength, maxLineGap)
+    lines = cv2.HoughLinesP(edges,rho=cv2.HOUGH_PROBABILISTIC, theta=np.pi/180, threshold = 5, \
+                            minLineLength=minLineLength, maxLineGap=maxLineGap)
     
     return lines, inputImage
 
@@ -122,11 +123,39 @@ def create_line(new_line, without_current, dst_threhold=20):
             deleted = without_current.pop(nearest_point)
             to_delete.append(nearest_point)
         else:
-            flag = True
+            new_line, to_delete2 = add_from_end(current_line=new_line, without_current=without_current,
+            dst_threhold=dst_threhold)
+            for deleted_key in to_delete2:
+                without_current.pop(deleted_key)
+            to_delete += to_delete2
+            flag = True 
             
-        if len(without_current) == 0:
+        if len(without_current) <= 1:
             flag = True
     return new_line, to_delete
+
+
+def add_from_end(current_line, without_current, dst_threhold):
+    ''' 
+    Le agrego los posibles elementos que sean parte de la linea pero quedan colgados.
+    '''
+    flag = False
+    to_delete = []
+    without_current_2 = deepcopy(without_current)
+    while not flag:
+        first_point = current_line[0]
+        nearest_point, dst = nearest_neighbour(first_point, without_current_2)
+
+        if dst <= dst_threhold:
+            current_line.insert(0, without_current_2[nearest_point])
+            deleted = without_current_2.pop(nearest_point)
+            to_delete.append(nearest_point)
+        else:
+            flag = True 
+
+        if len(without_current_2) <= 1:
+            flag = True
+    return current_line, to_delete
 
 
 def hough_detecting(all_points, **kwargs):
@@ -150,7 +179,7 @@ def hough_detecting(all_points, **kwargs):
         for deleted_key in to_delete:
             all_points_aux.pop(deleted_key)
 
-        main_flag = len(all_points_aux.keys()) == 0
+        main_flag = len(all_points_aux.keys()) <= 1
         i += 1
     return final_lines
 
