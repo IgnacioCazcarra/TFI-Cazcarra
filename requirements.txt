@@ -16,3 +16,5 @@ image_bbox_slicer
 paddlepaddle
 paddleocr
 jellyfish
+pybktree
+more-itertools
