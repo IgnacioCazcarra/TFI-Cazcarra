@@ -75,14 +75,11 @@ def save_model(path_to_save, model, epoch, loss_value):
     print(f"Modelo guardado en {path_to_save}")
     
     
-def load_model(model_instance, path_to_load):
+def load_model(path_to_load):
     '''
     Carga el modelo
     '''
-    model_obj = torch.load(path_to_load)
-    model_instance.load_state_dict(model_obj['model_state_dict'])
-    print("Modelo cargado correctamente")
-    return model_instance
+    return torch.jit.load(path_to_load)
 
 
 class SaveBestModel:
