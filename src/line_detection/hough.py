@@ -249,4 +249,4 @@ def unify_cardinalidades(img, lines, cardinalidades):
                 print(f"Increasing offset to {augment}")
 
     new_dict_cardinalidades = reverse_dict(dict_cardinalidades)
-    return plot_results(img, new_dict_cardinalidades, dict_lines)
+    return new_dict_cardinalidades#plot_results(img, new_dict_cardinalidades, dict_lines)
