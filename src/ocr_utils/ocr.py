@@ -191,7 +191,7 @@ def get_valid_table_att(text_list):
     flag = False
     valid = ""
     i = -1
-    while not flag and i < len(text_list):
+    while not flag and i < len(text_list)-1:
         i += 1
         if not text_list[i].isalpha() and not valid:
             continue
