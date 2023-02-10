@@ -18,3 +18,4 @@ paddleocr
 jellyfish
 pybktree
 more-itertools
+spacy
