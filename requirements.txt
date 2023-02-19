@@ -19,3 +19,5 @@ jellyfish
 pybktree
 more-itertools
 spacy
+lemminflect
+gdown
