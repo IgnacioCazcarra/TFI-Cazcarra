@@ -1,21 +1,334 @@
-from .bktree import get_tree
+from .bktree import get_tree, Item
 
 import re
-import os
 import cv2
-import json
+import spacy
 import jellyfish
-import pybktree
+import lemminflect
 import numpy as np
 import itertools
+from paddleocr import PaddleOCR
 from more_itertools import subslices
+       
 
-from paddleocr import PaddleOCR, draw_ocr
-from PIL import Image
-from IPython.display import display
+def get_ocr_model(det_algo="db", rec_algo="svtr", lang="en"):
+    ocr = PaddleOCR(use_angle_cls=False, lang=lang, show_log=False, 
+                    det_algorithm_dir=f"/home/nacho/TFI-Cazcarra/ocr/{det_algo}/", 
+                    rec_algorithm_dir=f"/home/nacho/TFI-Cazcarra/ocr/{rec_algo}/", 
+                    det_db_score_mode="slow")
+    return ocr
 
 
-def reescale(img, scale_percent=150):
+def get_lemmatizer(lang="en"):
+    return spacy.load("es_core_news_sm") if lang == "es" else spacy.load("en_core_web_sm")
+
+
+def get_plural(word, lemmatizer):
+    return lemmatizer(word)[0]._.inflect('NNS')
+
+
+def extract_from_ocr(coords, results):
+    all_tables = {}
+    tables_names = {}
+    for c, r in zip(coords, results):
+        boxes = [line[0] for line in r]
+        txts = [line[1][0].strip() for line in r]
+        scores = [line[1][1] for line in r]
+        table, dict_attributes = clean_texts(txts)
+        all_tables[table] = dict_attributes
+        tables_names[table] = c
+    return all_tables, tables_names
+
+
+def predict_ocr(img, tablas, ocr_model, scale_percent=100):
+    coords = []
+    results = []
+    img_arr = img if isinstance(img, np.ndarray) else np.array(img)
+    for t in tablas:
+        tabla_cropped = img_arr[t[1]:t[3], t[0]:t[2]]
+        tabla_cropped = reescale(tabla_cropped, scale_percent)
+        if len(tabla_cropped.shape) == 3 and tabla_cropped.shape[-1] > 3:
+            tabla_cropped = tabla_cropped[:,:,:3]
+        result = ocr_model.ocr(tabla_cropped, cls=False)
+
+        coords.append(t.tolist())
+        results.append(result[0])
+    return extract_from_ocr(coords, results)
+
+
+def pairs_to_names(pairs, tables_names):
+    new_pairs = []
+    tables_names = {str(v):k for k,v in tables_names.items()}
+    
+    for pair in pairs:
+        tabla_a, tabla_b = pair
+        tabla_a, tabla_b = tables_names[str(tabla_a)], tables_names[str(tabla_b)]
+        new_pairs.append((tabla_a, tabla_b))
+    return new_pairs
+
+
+def _is_potential_key(attribute, other_tables, lemmatizer):
+    if "_id" in attribute or attribute == "id":
+        return True 
+    for t in other_tables:
+        if t in attribute or lemmatizer(t)[0].lemma_ in attribute:
+            return True
+    return False
+
+
+def extract_candidate_keys(table_attributes, other_tables, lang):
+    lemmatizer = get_lemmatizer(lang)
+    return [attr for attr in table_attributes if _is_potential_key(attr, other_tables, lemmatizer)]
+
+
+def initial_guess_primary_keys(table, candidates, lemmatizer):
+    table_lemmatized = lemmatizer(table)[0].lemma_
+    possibilities = ["id", table+"_id", table_lemmatized+"_id", table+"id", table_lemmatized+"_id"]
+    return [p for p in possibilities if p in candidates]
+
+
+def is_many_to_many(table, table_candidates, tables_names, pairs, lemmatizer):
+    # Con esto deberian quedar solo dos pero hay que preever que pasaría si hay más.
+    matches = [t for t in tables_names if ((t in table) or (get_plural(t, lemmatizer) in table)) and (t!=table)]
+    
+    i = 0
+    confirmed_matches = []
+    flag = False
+    while not flag and i<len(pairs):
+        pair = pairs[i]
+        if table not in pair:
+            i+=1
+            continue
+
+        if pair[0] in matches:
+            # Confirmamos que hay una tabla que aparece en el nombre de la m2m y
+            # tiene relación con ella.
+            confirmed_matches.append(pair[0]) 
+        elif pair[1] in matches:
+            confirmed_matches.append(pair[1])
+            
+        if len(confirmed_matches) == 2:
+            # Si hay dos tablas que aparecen en el nombre de la m2m y tienen conexión con ella, es confirmado
+            flag = True
+        i+=1
+    return flag
+
+
+def get_unchosen(candidates, already_chosen):
+    '''
+    Remueve los candidatos ya elegidos
+    '''
+    return list(set(candidates) - set(already_chosen))
+
+
+def generate_valid_combs_fk(table, lemmatizer):
+    '''
+    Dado el nombre de una tabla, genera las combinaciones válidas. Osea, tabla+id, tabla+_id, 
+    tabla_lematizada+id y tabla_lematizada+_id. También aplica a casos donde la tabla está en singular y 
+    la PK en plural.
+    '''
+    table_lemmatized = lemmatizer(table)[0].lemma_
+    table_unlemmatized = get_plural(table, lemmatizer)
+    valid_combs = [table+"id", table+"_id", 
+                   table_lemmatized+"id", table_lemmatized+"_id",
+                   table_unlemmatized+"id", table_unlemmatized+"_id"]
+    return list(set(valid_combs))
+
+
+def match_fk(table_pair, table_candidates, table_pair_candidates, lemmatizer):
+    '''
+    Match normal entre dos variantes con el nombre de la tabla.
+    '''
+    valid_combs = generate_valid_combs_fk(table_pair, lemmatizer)
+    possibilities = valid_combs
+    pair_possibilities = valid_combs + ["id"]
+    
+    for possibility in possibilities:
+        for pair_possibility in pair_possibilities:
+            if possibility in table_candidates and pair_possibility in table_pair_candidates:
+                table_candidates.remove(possibility) # Remuevo la fk de la lista de candidatos.
+                return (True, possibility, pair_possibility)
+    return (False, "", "")
+
+
+def match_autofk(table, table_candidates, lemmatizer):
+    valid_combs = generate_valid_combs_fk(table, lemmatizer) + ["id"]
+    table_lemmatized = lemmatizer(table)[0].lemma_
+    table_unlemmatized = get_plural(table, lemmatizer)
+    fk = None
+    pk = None
+    
+    i = 0
+    while not fk and i<len(table_candidates):
+        t = table_candidates[i]
+        if ((table in t) or (table_lemmatized in t) or (table_unlemmatized in t)) and (t not in valid_combs):
+            fk = t
+        i+=1
+    j = 0
+    while not pk and j<len(valid_combs):
+        v = valid_combs[j]
+        if v in table_candidates:
+            pk = v
+        j+=1
+    
+    if pk:
+        if fk:
+            return (True, fk, pk)
+        else:
+            left_candidates = get_unchosen(table_candidates, valid_combs)
+            if len(left_candidates) == 1:
+                return (True, left_candidates[0], pk)
+    return (False, "", "")
+
+
+def match_m2m(table, table_pair, table_candidates, table_pair_candidates, lemmatizer):
+    '''
+    Chequea si hay un atributo en común entre la tabla normal y la m2m. Si hay uno solo, se devuelve ese.
+    Si no, se sigue con la opción "normal" entre dos tablas convencionales (método 'match_fk').
+    '''
+    matches = [table_candidate for table_candidate in table_candidates if table_candidate in table_pair_candidates]
+    if len(matches) == 1:
+        # Si hubo match con solo un atributo.
+        # A las m2m no se les remueve la FK porque tambien es PK. 
+        return (True, matches[0], matches[0])
+    else:
+        # Si no hubo un solo match, hacemos el chequeo "normal" con las combinaciones válidas de la tabla.
+        return match_fk(table_pair, table_candidates, table_pair_candidates, lemmatizer)
+
+
+def is_foreign_key(table, table_pair, table_candidates, table_pair_candidates, lemmatizer, m2m_tables,
+                   is_auto_fk=False):
+    '''
+    Se fija si hay un match entre un atributo con _id en su versión original y lematizada.
+    Soporta relaciones convencionales, relaciones many to many y auto foreign keys.
+    '''
+    if table_pair == table and not is_auto_fk:
+        return (False, "", "")
+
+    if is_auto_fk:
+        return match_autofk(table, table_candidates, lemmatizer)
+    elif table in m2m_tables:
+        # Si es una relación y la tabla es una "many to many"
+        return match_m2m(table, table_pair, table_candidates, table_pair_candidates, lemmatizer)
+    else:
+        # Si es una relación entre dos tablas "estándar".
+        return match_fk(table_pair, table_candidates, table_pair_candidates, lemmatizer)
+
+
+
+def get_foreign_keys(table, all_candidates, pairs, m2m_tables, lemmatizer=None, check_auto_fks=False):
+    """
+    Ejemplo:
+    table -> poems
+    candidates -> ['poems_id', 'users_id', 'categories_id']
+    pairs -> [('tokens', 'users'), ('poems', 'users'), ('poems', 'categories')]
+    """
+    if not lemmatizer:
+        lemmatizer = get_lemmatizer()
+    fks = {}
+    completed_pairs = []
+        
+    table_candidates = all_candidates[table]
+    for pair in pairs:
+        if table not in pair:
+            continue
+            
+        is_auto_fk = False
+        if pair[0] == pair[1] and check_auto_fks:
+            is_auto_fk = True
+        is_fk_pair0, table_att0, pair_att0 = is_foreign_key(table=table, table_pair=pair[0], 
+                                                            table_candidates=table_candidates,
+                                                            table_pair_candidates=all_candidates[pair[0]], 
+                                                            lemmatizer=lemmatizer, is_auto_fk=is_auto_fk,
+                                                            m2m_tables=m2m_tables)
+        is_fk_pair1, table_att1, pair_att1 = is_foreign_key(table=table, table_pair=pair[1], 
+                                                            table_candidates=table_candidates,
+                                                            table_pair_candidates=all_candidates[pair[1]], 
+                                                            lemmatizer=lemmatizer, is_auto_fk=is_auto_fk,
+                                                            m2m_tables=m2m_tables)
+        if is_fk_pair0:
+            fks[(table_att0, pair_att0)] = pair[0]
+            completed_pairs.append(pair)
+        elif is_fk_pair1:
+            fks[(table_att1, pair_att1)] = pair[1]
+            completed_pairs.append(pair)
+    return fks, completed_pairs
+
+
+def generate_pks_code(pks):
+    keys = pks.keys()
+    keys = ", ".join(keys)
+    return f"PRIMARY KEY ({keys})"
+
+
+def generate_fks_code(table, fks):
+    code = ""
+    for fk, table_reference in fks.items():
+        code += f"ALTER TABLE {table} ADD FOREIGN KEY ({fk[0]}) REFERENCES {table_reference}({fk[1]}); \n"
+    return code
+
+
+def create_code(table, dict_attributes, primary_keys, foreign_keys):
+    '''
+    Crea una tabla de MySQL
+    '''
+    attributes_code = "  "
+    i = 0
+    for k, v in dict_attributes.items():
+        attributes_code += k + " " + v           
+        attributes_code += ",\n   "
+        i += 1
+    pks_code = generate_pks_code(primary_keys)
+    fks_code = generate_fks_code(table, foreign_keys)
+    if pks_code:
+        attributes_code += pks_code
+    code = f" CREATE TABLE {table} ( \n {attributes_code} \n ); \n"
+    return code, fks_code
+
+
+def generate_db(pairs, all_tables, tables_names, lang):
+    pairs = pairs_to_names(pairs, tables_names)
+    
+    all_candidates = {}
+    m2m_tables = []
+    # Primera pasada: Extraemos los candidatos y vemos qué tabla es m2m.
+    for k, dict_attributes in all_tables.items():
+        candidates = extract_candidate_keys(dict_attributes.keys(), [t for t in tables_names if t != k], lang="en")
+        all_candidates[k] = candidates
+        if is_many_to_many(k, candidates, tables_names, pairs, lemmatizer=get_lemmatizer(lang)):
+            m2m_tables.append(k)
+    
+    all_tables_pks = {}
+    all_tables_fks = {}
+    # Segunda pasada: Se resuelven todas las relaciones menos la de auto fks.
+    for k in all_tables.keys():    
+        pks = {pk: k for pk in initial_guess_primary_keys(k, all_candidates[k], get_lemmatizer(lang="en"))}
+        fks, completed_pairs = get_foreign_keys(table=k, all_candidates=all_candidates, pairs=pairs,\
+                                                m2m_tables=m2m_tables, check_auto_fks=False)
+        pairs = get_unchosen(pairs, completed_pairs)
+        pks = {**pks, **{pk: k for pk in get_unchosen(all_candidates[k], fks.keys())}}
+        all_tables_pks[k] = pks
+        all_tables_fks[k] = fks
+        
+    all_code = ""
+    all_fks_code = ""
+    # Tercera pasada: Se completan los auto-fks y se genera el código.
+    for k, dict_attributes in all_tables.items():
+        fks, completed_pairs = get_foreign_keys(table=k, all_candidates=all_candidates, pairs=pairs,\
+                                                m2m_tables=m2m_tables, check_auto_fks=True)
+        pairs = get_unchosen(pairs, completed_pairs)
+        if fks:
+            all_tables_fks[k] = {**all_tables_fks[k], **fks}
+            
+        code, fk_code = create_code(k, dict_attributes, \
+                                    primary_keys=all_tables_pks[k], \
+                                    foreign_keys=all_tables_fks[k])
+        all_code += code
+        all_fks_code += fk_code
+    return all_code + "\n" + all_fks_code
+
+
+def reescale(img, scale_percent):
     width = int(img.shape[1] * scale_percent / 100)
     height = int(img.shape[0] * scale_percent / 100)
     dim = (width, height)
@@ -172,14 +485,6 @@ def clean_attribute(attribute):
 
 
 def get_clean_attribute(attribute):
-    '''
-    Debería ser algo así:
-    - Separa por underscore porque espacios no deberia haber.
-    - Lo que haya quedado junto y tenga espacios en blanco, lo probamos con y sin y nos quedamos con la palabra de
-    ambas divisiones que tenga menor tolerancia.
-    - Si hay que juntar juntamos, y si no separamos.
-    - Reemplazamos los espacios por underscore y devolvemos.
-    '''
     attribute = attribute.strip()
     if " " in attribute:
         splitted_attribute = attribute.split("_")
@@ -228,7 +533,8 @@ def clean_texts(texts):
         # Todo lo que venga después de Indexes está mal o pertenece a otra cosa.
         indexes_idx = texts.index("Indexes")
         texts = texts[:indexes_idx]
-    table_name, _ = get_valid_table_att(texts[0]) # Para limpiarlo por si tiene espacios o simbolos.
+    table_name, _ = get_valid_table_att(texts[0].lower()) # Para limpiarlo por si tiene espacios o simbolos.
+    table_name = get_clean_attribute(table_name) # Para insertarle "_" en caso de que haya falta.
     attributes = {} # K=name, V=type
     for t in texts[1:]:
         attribute, dtype = separate(t, db_name="mysql")

@@ -3,6 +3,7 @@ import math
 import random
 import itertools
 from PIL import Image
+from IPython.display import display
 from copy import deepcopy
 from ast import literal_eval
 
@@ -30,43 +31,39 @@ def get_tablas(img_to_search):
     elif val[val_contains_img].shape[0] > 0:
         tablas = val[val_contains_img & (val['label']=="tabla")][COORDS].values
         cardinalidades = val[val_contains_img & (val['label']!="tabla")][COORDS].values
-    else:
+    elif test[test_contains_img].shape[0] > 0:
         tablas = test[test_contains_img & (test['label']=="tabla")][COORDS].values
         cardinalidades = test[test_contains_img & (test['label']!="tabla")][COORDS].values
 
     return tablas, cardinalidades
 
 
-def poly_detection(img_path, tablas, cardinalidades):
-    inputImage = cv2.imread(img_path)
-    inputImageGray = cv2.cvtColor(inputImage, cv2.COLOR_BGR2GRAY)
+def poly_detection(img, tablas, cardinalidades):
+    input_image = np.array(img)
+    input_image_gray = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
     
-    #edges = cv2.Canny(inputImageGray, 150, 200, apertureSize = 3)
-    ret, thresh = cv2.threshold(inputImageGray, 190, 255, cv2.THRESH_BINARY_INV)
+    #edges = cv2.Canny(input_image, 150, 200, apertureSize = 3)
+    ret, thresh = cv2.threshold(input_image_gray, 190, 255, cv2.THRESH_BINARY_INV)
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    
-    edges = np.zeros(inputImage.shape, dtype = np.uint8) # Creamos una imagen en negro
+    edges = np.zeros(input_image.shape, dtype = np.uint8) # Creamos una imagen en negro
     edges = cv2.drawContours(edges, contours, -1, (255, 255, 255), -1)
     edges = cv2.cvtColor(edges, cv2.COLOR_BGR2GRAY)
-        
+    
     minLineLength = 5
     maxLineGap = 19
-    
     for t in tablas:
         edges = cv2.rectangle(edges, t[:2], t[2:], color=(0,0,0), thickness=-1)
     for c in cardinalidades:
         edges = cv2.rectangle(edges, c[:2], c[2:], color=(0,0,0), thickness=-1)
-    
-    
 #     display(Image.fromarray(edges))
     lines = cv2.HoughLinesP(edges,rho=cv2.HOUGH_PROBABILISTIC, theta=np.pi/180, threshold = 5, \
                             minLineLength=minLineLength, maxLineGap=maxLineGap)
     
-    return lines, inputImage
+    return lines, input_image
 
 
-def apply_hough(img_path, tablas, cardinalidades):
-    lines, img1 = poly_detection(img_path, tablas, cardinalidades)
+def apply_hough(img, tablas, cardinalidades):
+    lines, img1 = poly_detection(img, tablas, cardinalidades)
     all_lines = {}
     for x in range(0, len(lines)):
         for i, (x1,y1,x2,y2) in enumerate(lines[x]):
@@ -225,10 +222,9 @@ def plot_results(img, dict_cardinalidades, dict_lines):
     return Image.fromarray(img)
 
 
-def unify_cardinalidades(img, lines, cardinalidades):
+def unify_cardinalidades(img, lines, cardinalidades, plot=False):
     dict_cardinalidades = {}
     dict_lines = {f"line_{i}":l for i,l in enumerate(lines) if len(l)>1}
-    
     matches = 0
     for c in cardinalidades:
         augment = 0
@@ -240,13 +236,100 @@ def unify_cardinalidades(img, lines, cardinalidades):
                 start = l[0]
                 end = l[-1]
                 if point_inside(c_offset, start) or point_inside(c_offset, end):
-                    dict_cardinalidades[str(c.tolist())] = k
-                    matches  +=1
+                    # Table + augment
+                    match_key= (c.tolist(), augment)
+                    dict_cardinalidades[str(match_key)] = k
+                    matches +=1
                     flag = True
                     break
             if str(c.tolist()) not in dict_cardinalidades.keys():
                 augment += 2
                 print(f"Increasing offset to {augment}")
-
+    if plot:
+        display(plot_results(img, dict_cardinalidades, dict_lines))
     new_dict_cardinalidades = reverse_dict(dict_cardinalidades)
-    return new_dict_cardinalidades#plot_results(img, new_dict_cardinalidades, dict_lines)
+    return new_dict_cardinalidades
+
+
+def clean_cardinalidades(cardinalidades, tablas, distance_threshold=30):
+    # Si tiene una tabla a menos de X puntos de distancia..
+    return [c for c in cardinalidades if nearest_tabla_from_cardinalidad(c, tablas, distance_threshold=distance_threshold)]
+
+
+def find_lines(tablas, cardinalidades, img, offset_tablas=5, **kwargs):
+    offset = np.array([-offset_tablas, -offset_tablas, offset_tablas, offset_tablas]).reshape(1,4)
+    tablas = np.sum([tablas, offset])
+    img, all_lines = apply_hough(img, tablas, [])
+    all_points = lines_to_points(all_lines)
+    lines = hough_detecting(all_points)
+    cardinalidades = clean_cardinalidades(cardinalidades, tablas)
+    return unify_cardinalidades(img, lines, cardinalidades, **kwargs)
+
+
+def line_to_points(x, y, max_dst_per_points=2):
+    dst_line = math.dist(x,y)
+    parts = dst_line // max_dst_per_points
+    return np.linspace(x, y, int(parts)+1).tolist()
+
+
+def dist_func(comb):
+    return math.dist(comb[0], comb[1])
+
+
+def get_centroid(cardinalidad):
+    center_x  = cardinalidad[0] + (cardinalidad[2] - cardinalidad[0])/2
+    center_y  = cardinalidad[1] + (cardinalidad[3] - cardinalidad[1])/2
+    return (center_x, center_y)
+
+
+def nearest_tabla_from_cardinalidad(cardinalidad, tablas, distance_threshold=999999):
+    cardinalidad = literal_eval(cardinalidad) if isinstance(cardinalidad, str) else cardinalidad
+    cardinalidad_centroid = get_centroid(cardinalidad)
+    dict_dist_tablas = {}
+    for t in tablas:
+        tabla_points = []
+        # De x1y1 a x2y1
+        tabla_points += line_to_points((t[0], t[1]), (t[2], t[1]))
+        # De x1y1 a x1y2
+        tabla_points += line_to_points((t[0], t[1]), (t[0], t[3]))
+        # De x1y2 a x2y2
+        tabla_points += line_to_points((t[0], t[3]), (t[2], t[3]))
+        # De x2y1 a x2y2
+        tabla_points += line_to_points((t[2], t[1]), (t[2], t[3]))
+        dist_cardinalidad = [(cardinalidad_centroid, point) for point in tabla_points]
+        min_combination = min(dist_cardinalidad, key=dist_func)
+        dict_dist_tablas[",".join([str(c) for c in t])] = dist_func(min_combination)
+    nearest_tabla = min(dict_dist_tablas, key=dict_dist_tablas.get)
+    
+    if min(dict_dist_tablas.values()) >= distance_threshold:
+        return [] 
+    return [int(c) for c in nearest_tabla.split(",")]
+
+
+def sep_line(line, tablas):
+    tabla_a = None
+    tabla_b = None
+    try:
+        cardinalidades = line.split("|")
+        cardinalidades = [literal_eval(c) for c in cardinalidades]
+        cardinalidades_dist = {str(c[0]): c[1] for c in cardinalidades}
+        # TOP 2 con menos augment
+        cardinalidades = sorted(cardinalidades_dist, key=cardinalidades_dist.get)[:2]
+        tabla_a = nearest_tabla_from_cardinalidad(cardinalidades[0], tablas)
+        tabla_b = nearest_tabla_from_cardinalidad(cardinalidades[1], tablas)
+    except Exception as e:
+        print(f"Error al separar tablas! {e}. Chequear las bounding boxes pasadas. Salteando..")
+    finally:
+        return (tabla_a, tabla_b)
+
+    
+def get_pairs(boxes_tablas, boxes_cardinalidades, img, **kwargs):
+    pairs = []
+    tablas = boxes_tablas.detach().numpy().astype(int)
+    cardinalidades = boxes_cardinalidades.detach().numpy().astype(int)
+        
+    for line_name, line in find_lines(img=img, tablas=tablas, cardinalidades=cardinalidades, **kwargs).items(): 
+        tabla_a, tabla_b = sep_line(line, tablas)
+        if tabla_a and tabla_b:
+            pairs.append((tabla_a, tabla_b))
+    return pairs

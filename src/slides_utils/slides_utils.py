@@ -1,17 +1,24 @@
 # Adaptation of the code available at https://github.com/acl21/image_bbox_slicer
 
 from ..constants import *
+from ..detection.prediction_utils import filter_predictions
 
+import os
+import math
+import glob
+import torch
+import numpy as np
 import image_bbox_slicer as ibs
+from PIL import Image
+from ast import literal_eval
 from image_bbox_slicer.helpers import * 
 from image_bbox_slicer.slicer import Points
 
 
 def default_ibs(img_src, ann_src, img_dst, ann_dst):
     slicer = ibs.Slicer()
-    slicer.config_dirs(img_src=im_src, ann_src=an_src, 
-                       img_dst=im_dst, ann_dst=an_dst)
-
+    slicer.config_dirs(img_src=img_src, ann_src=ann_src, 
+                       img_dst=img_dst, ann_dst=ann_dst)
     slicer.keep_partial_labels = True
     slicer.save_before_after_map = True
     return slicer
@@ -30,7 +37,7 @@ def __slice_images(slicer, tile_size, tile_overlap, number_tiles):
         if number_tiles > 0:
             n_cols, n_rows = calc_columns_rows(number_tiles)
             tile_w, tile_h = int(
-                floor(im.size[0] / n_cols)), int(floor(im.size[1] / n_rows))
+                math.floor(im.size[0] / n_cols)), int(math.floor(im.size[1] / n_rows))
             tile_size = (tile_w, tile_h)
 #             tile_overlap = 0.0
 
@@ -54,7 +61,7 @@ def __slice_images(slicer, tile_size, tile_overlap, number_tiles):
 def slice_img_from_prediction(img, tile_size, tile_overlap, number_tiles):
     if number_tiles > 0:
         n_cols, n_rows = calc_columns_rows(number_tiles)
-        tile_w, tile_h = int(floor(img.size[0] / n_cols)), int(floor(img.size[1] / n_rows))
+        tile_w, tile_h = int(math.floor(img.size[0] / n_cols)), int(math.floor(img.size[1] / n_rows))
         tile_size = (tile_w, tile_h)
     tiles = __get_tiles(img.size, tile_size, tile_overlap)   
     return tiles
@@ -169,7 +176,7 @@ def __slice_bboxes(slicer, tile_size, tile_overlap, number_tiles):
     mapper = {}
     empty_count = 0
 
-    for xml_file in sorted(glob.glob(an_src + os.sep + '*.xml')):
+    for xml_file in sorted(glob.glob(slicer.ann_src + os.sep + '*.xml')):
         root, objects = extract_from_xml(xml_file)
         im_w, im_h = int(root.find('size')[0].text), int(
             root.find('size')[1].text)
@@ -177,8 +184,8 @@ def __slice_bboxes(slicer, tile_size, tile_overlap, number_tiles):
         extn = os.path.splitext(root.find('filename').text)[1]
         if number_tiles > 0:
             n_cols, n_rows = calc_columns_rows(number_tiles)
-            tile_w = int(floor(im_w / n_cols))
-            tile_h = int(floor(im_h / n_rows))
+            tile_w = int(math.floor(im_w / n_cols))
+            tile_h = int(math.floor(im_h / n_rows))
             tile_size = (tile_w, tile_h)
 #             tile_overlap = 0.0
         else:
@@ -188,7 +195,7 @@ def __slice_bboxes(slicer, tile_size, tile_overlap, number_tiles):
 
         for tile in tiles:
             img_no_str = '{:06d}'.format(img_no)
-            voc_writer = Writer('{}{}{}{}'.format(an_dst, os.sep, img_no_str, extn), tile_w, tile_h)
+            voc_writer = Writer('{}{}{}{}'.format(slicer.ann_dst, os.sep, img_no_str, extn), tile_w, tile_h)
             for obj in objects:
                 obj_lbl = obj[-4:]
                 points_info = ibs.which_points_lie(obj_lbl, tile)
@@ -243,7 +250,7 @@ def __slice_bboxes(slicer, tile_size, tile_overlap, number_tiles):
                 slicer._ignore_tiles.append(img_no_str)
             else:
                 voc_writer.save(
-                    '{}{}{}.xml'.format(an_dst, os.sep, img_no_str))
+                    '{}{}{}.xml'.format(slicer.ann_dst, os.sep, img_no_str))
                 tile_ids.append(img_no_str)
                 img_no += 1
             empty_count = 0
@@ -251,3 +258,34 @@ def __slice_bboxes(slicer, tile_size, tile_overlap, number_tiles):
 
     print('Obtained {} annotation slices!'.format(img_no-1))
     return mapper
+
+
+def unify_images(img, boxes_per_tile):
+    img = np.array(img)
+    first_tile = next(iter(boxes_per_tile.keys()))
+    all_boxes = np.array([[]])
+    all_scores = np.array([])
+    
+    for tile, prediction in boxes_per_tile.items():
+        coords_to_add = torch.Tensor(list(map(lambda i,j: i-j, literal_eval(tile), literal_eval(first_tile))))
+        boxes = torch.add(prediction['boxes'], coords_to_add, alpha=1).detach().numpy()
+        all_boxes = np.append(all_boxes, boxes)
+        all_scores = np.append(all_scores, prediction['scores'])
+    return {"boxes": torch.from_numpy(all_boxes.reshape((-1,4))), "scores": torch.from_numpy(all_scores)}
+
+
+def predict_tiles(img, model, is_yolo, transform, min_size=600, max_size=1333):
+    tiles = slice_img_from_prediction(img, tile_size=None, tile_overlap=0.0, number_tiles=6)
+    preds_image = {}
+    with torch.no_grad():
+        for tile in tiles:
+            tile_img = img.crop(tile).convert("RGB")
+            tensor_tile = transform(tile_img)
+            if not is_yolo:
+                predictions = model([tensor_tile])[1][0]
+            else:
+                predictions = model(tile_img)
+                predictions = {"boxes": predictions.xyxyn[0][:, :4], "scores": predictions.xyxyn[0][:, 4]}
+            preds_image[str(tile)] = predictions
+    unified_results = unify_images(img=img, boxes_per_tile=preds_image)
+    return unified_results
