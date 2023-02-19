@@ -286,6 +286,12 @@ def create_code(table, dict_attributes, primary_keys, foreign_keys):
     return code, fks_code
 
 
+def print_remaining_pairs(pairs):
+    for p in pairs:
+        print(f"Relationship between {p} could not be established.") 
+        print("Please check that the attributes are in the correct format.\n")
+
+
 def generate_db(pairs, all_tables, tables_names, lang):
     pairs = pairs_to_names(pairs, tables_names)
     
@@ -325,6 +331,7 @@ def generate_db(pairs, all_tables, tables_names, lang):
                                     foreign_keys=all_tables_fks[k])
         all_code += code
         all_fks_code += fk_code
+    print_remaining_pairs(pairs)
     return all_code + "\n" + all_fks_code
 
 
