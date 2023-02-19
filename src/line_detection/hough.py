@@ -243,7 +243,7 @@ def unify_cardinalidades(img, lines, cardinalidades, plot=False):
                     break
             if str(c.tolist()) not in dict_cardinalidades.keys():
                 augment += 2
-                print(f"Increasing offset to {augment}")
+                #print(f"Increasing offset to {augment}")
     if plot:
         display(plot_results(img, dict_cardinalidades, dict_lines))
     new_dict_cardinalidades = reverse_dict(dict_cardinalidades)
