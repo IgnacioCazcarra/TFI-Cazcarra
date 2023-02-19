@@ -1,3 +1,4 @@
+import os
 import json
 import jellyfish
 import pybktree
@@ -13,14 +14,18 @@ def item_distance(x, y):
 
 
 def english_tree():
-    with open("./words_dictionary.json", "rb") as f:
+    curr_dir = os.path.realpath(os.path.dirname(__file__))
+    words_path = os.path.join(curr_dir, "words_english.json")
+    with open(words_path, "rb") as f:
         english_dict = f.read()
     english_words = json.loads(english_dict).keys()
     return pybktree.BKTree(item_distance, [Item(w) for w in english_words])
 
 
 def spanish_tree():
-    with open("./words_spanish.txt", "rb") as f:
+    curr_dir = os.path.realpath(os.path.dirname(__file__))
+    words_path = os.path.join(curr_dir, "words_spanish.txt")
+    with open(words_path, "rb") as f:
         spanish_words = f.readlines()
     spanish_words = [s.decode('utf8').replace("\n", "") for s in spanish_words]
     return pybktree.BKTree(item_distance, [Item(w) for w in spanish_words])
