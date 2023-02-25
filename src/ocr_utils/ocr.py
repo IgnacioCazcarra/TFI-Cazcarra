@@ -11,11 +11,8 @@ from paddleocr import PaddleOCR
 from more_itertools import subslices
        
 
-def get_ocr_model(det_algo="db", rec_algo="svtr", lang="en"):
-    ocr = PaddleOCR(use_angle_cls=False, lang=lang, show_log=False, 
-                    det_algorithm_dir=f"/home/nacho/TFI-Cazcarra/ocr/{det_algo}/", 
-                    rec_algorithm_dir=f"/home/nacho/TFI-Cazcarra/ocr/{rec_algo}/", 
-                    det_db_score_mode="slow")
+def get_ocr_model():
+    ocr = PaddleOCR(use_angle_cls=False, show_log=False, det_db_score_mode="slow")
     return ocr
 
 
@@ -397,7 +394,7 @@ def get_average_score(comb, slices_dict):
             max_key_score = max(dict_c, key=dict_c.get)
             max_score = dict_c[max_key_score]
         else:
-            max_key_score = ""
+            max_key_score = c
             max_score = 0
         scores.append(max_score)
         word += max_key_score + "_"
@@ -411,7 +408,6 @@ def get_best_performing_sequence(word, slices_dict):
     all_combs = [[el.replace(" ", "") for el in l if not el.isspace()] for l in all_combs]
     all_combs.sort()
     all_combs = [l for l in list(k for k,_ in itertools.groupby(all_combs)) if all(el in slices_dict.keys() for el in l)]
-    
     combs_dict = {}
     for comb in all_combs:
         word, avg_score, comb_len = get_average_score(comb, slices_dict)
@@ -420,7 +416,6 @@ def get_best_performing_sequence(word, slices_dict):
     max_key = -1
     min_length = 99999
     max_score = 0
-
     for k,v in combs_dict.items():
         if v[0] >= max_score and v[1] < min_length:
             max_key = k
@@ -457,7 +452,6 @@ def sanitize_words(splitted_attribute, mode="english"):
     Sanitizes every word of the attribute.
     '''
     tree = get_tree(mode)
-    TOLERANCE = 1
     
     sanitized = []
     for word in splitted_attribute:
@@ -475,20 +469,12 @@ def sanitize_words(splitted_attribute, mode="english"):
                 longest_key_max_score = max(longest_key_dict, key=longest_key_dict.get)
                 fixed_word = longest_key_max_score
             else:
-                # Me tengo la secuencia en partes cuya suma de scores sea la mayor.
+                # Me quedo con la secuencia en partes cuya suma de scores sea la mayor.
                 fixed_word = get_best_performing_sequence(word, slices_dict)
             sanitized.append(fixed_word)
         else:
             sanitized.append(word) # Dejar así nomás; no suele haber typos y la podes cagar facilmente.
     return "_".join(sanitized)
-
-
-# El problema es si se confunde una L por una | o cosas así. Status: deprecated.
-def clean_attribute(attribute):
-    '''
-    Removes from str everything that's not a digit, underscore, dollar signs & characters (upper or lower).
-    '''
-    return re.sub("[^0-9a-zA-Z$_]+", "", attribute)
 
 
 def get_clean_attribute(attribute):
