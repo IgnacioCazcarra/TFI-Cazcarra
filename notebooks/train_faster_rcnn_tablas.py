@@ -15,22 +15,21 @@ def get_custom_transform(train):
     transforms = []
     if train:
         transforms.append(T.RandomHorizontalFlip(0.5))
-        transforms.append(T.RandomVerticalFlip(0.5))
         transforms.append(T.RandomEqualize(0.5))
         transforms.append(T.RandomInvert(0.3))
-        transforms.append(T.RandomGrayscale(0.2))
+        transforms.append(T.RandomGrayscale(0.5))
     transforms.append(T.ToTensor())
     return T.Compose(transforms)
 
-train_df = pd.read_csv("/home/nacho/TFI-Cazcarra/data/csv/augmented_train_diagramas.csv", header=None)
-train_df.columns = ['image_path', 'xmin', 'ymin', 'xmax', 'ymax', 'label']
-test_df = pd.read_csv("/home/nacho/TFI-Cazcarra/data/csv/augmented_test_diagramas.csv")
+train_df = pd.read_csv("/home/nacho/TFI-Cazcarra/data/csv/train_diagramas_2023.csv")
+test_df = pd.read_csv("/home/nacho/TFI-Cazcarra/data/csv/test_diagramas_2023.csv")
 train_df = train_df[train_df['label']=="tabla"]
 test_df = test_df[test_df['label']=="tabla"]
 
 IMAGES_DIR = f"{PATH}/data/imagenes_diagramas/"
 
-le_dict = get_encoder_dict(CLASSES_CSV)
+# le_dict = get_encoder_dict(CLASSES_CSV)
+le_dict = {"tabla": 1}
 
 train_df['label_transformed'] = train_df['label'].apply(lambda x: le_dict[x])
 test_df['label_transformed'] = test_df['label'].apply(lambda x: le_dict[x])
@@ -46,7 +45,7 @@ data_loader = get_dataloader(dataset, batch_size=2, shuffle=True)
 data_loader_test = get_dataloader(dataset_test, batch_size=1, shuffle=False)
 
 train = True
-epochs = 10
+epochs = 30
 
 model = get_model_instance_segmentation(num_classes=num_classes, model_type="faster-rcnn", min_size=600)
 model.to(device)

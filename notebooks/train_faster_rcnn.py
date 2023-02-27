@@ -9,7 +9,7 @@ import torch
 import pandas as pd
 
 from torchvision import transforms as T
-from torch.utils.data import WeightedRandomSampler
+# from torch.utils.data import WeightedRandomSampler
 
 
 def get_custom_transform(train):
@@ -23,17 +23,16 @@ def get_custom_transform(train):
     transforms.append(T.ToTensor())
     return T.Compose(transforms)
 
-train_df = pd.read_csv("/home/nacho/TFI-Cazcarra/data/csv/augmented_train_diagramas.csv", header=None)
-train_df.columns = ['image_path', 'xmin', 'ymin', 'xmax', 'ymax', 'label']
-test_df = pd.read_csv("/home/nacho/TFI-Cazcarra/data/csv/augmented_test_diagramas.csv")
-train_df = train_df[train_df['label']=="tabla"]
-test_df = test_df[test_df['label']=="tabla"]
 
-# train_df = pd.read_csv(f"/home/nacho/TFI-Cazcarra/data/tiles/train_cardinalidades_linux_fixed.csv")
-# test_df = pd.read_csv(f"/home/nacho/TFI-Cazcarra/data/tiles/test_cardinalidades_linux_fixed.csv")
-# IMAGES_DIR = f"{PATH}/data/tiles/image_slices/"
+train_df = pd.read_csv(f"/home/nacho/TFI-Cazcarra/data/tiles/train_cardinalidades_2023_fixed.csv")
+test_df = pd.read_csv(f"/home/nacho/TFI-Cazcarra/data/tiles/test_cardinalidades_2023_fixed.csv")
+IMAGES_DIR = f"{PATH}/data/tiles/image_slices/"
 
 le_dict = get_encoder_dict(CLASSES_CSV)
+le_dict = {'muchos_opcional': 2,
+           'muchos_obligatorio': 1,
+           'uno_opcional': 3,
+           'uno_obligatorio': 4}
 
 train_df['label_transformed'] = train_df['label'].apply(lambda x: le_dict[x])
 test_df['label_transformed'] = test_df['label'].apply(lambda x: le_dict[x])
@@ -59,7 +58,7 @@ data_loader = get_dataloader(dataset, batch_size=2, shuffle=True)#, sampler=samp
 data_loader_test = get_dataloader(dataset_test, batch_size=1, shuffle=False)
 
 train = True
-epochs = 50
+epochs = 30
 
 model = get_model_instance_segmentation(num_classes=num_classes, model_type="faster-rcnn", min_size=600)
 model.to(device)
