@@ -11,29 +11,20 @@ import numpy as np
 import pandas as pd
 
 
-def get_tablas(img_to_search):
-    train = pd.read_csv("../data/csv/train_diagramas.csv")
-    val = pd.read_csv("../data/csv/val_diagramas.csv")
-    test = pd.read_csv("../data/csv/test_diagramas.csv")
-    
+def get_tablas(img_to_search, where_to_search):    
     COORDS = ['xmin','ymin','xmax','ymax']
     
     tablas = None
     cardinalidades = None
-    train_contains_img = train['image_path'].str.contains(img_to_search)
-    test_contains_img = test['image_path'].str.contains(img_to_search)
-    val_contains_img = val['image_path'].str.contains(img_to_search)
     
-    if train[train_contains_img].shape[0] > 0:
-        tablas = train[train_contains_img & (train['label']=="tabla")][COORDS].values
-        cardinalidades = train[train_contains_img & (train['label']!="tabla")][COORDS].values
-    elif val[val_contains_img].shape[0] > 0:
-        tablas = val[val_contains_img & (val['label']=="tabla")][COORDS].values
-        cardinalidades = val[val_contains_img & (val['label']!="tabla")][COORDS].values
-    elif test[test_contains_img].shape[0] > 0:
-        tablas = test[test_contains_img & (test['label']=="tabla")][COORDS].values
-        cardinalidades = test[test_contains_img & (test['label']!="tabla")][COORDS].values
-
+    for df_path in where_to_search:
+        df = pd.read_csv(df_path)
+        contains_img = df['image_path'].str.contains(img_to_search)
+        
+        if df[contains_img].shape[0] > 0:
+            tablas = df[contains_img & (df['label']=="tabla")][COORDS].values
+            cardinalidades = df[contains_img & (df['label']!="tabla")][COORDS].values
+            return tablas, cardinalidades
     return tablas, cardinalidades
 
 
@@ -88,7 +79,7 @@ def plot_lines(img, lines):
 
 def plot_points(img, points):
     img = np.array(img)
-    for p in points.values():
+    for p in points:
         pts = np.array([p,p], np.int32)
         random_color = (255,0,0)#(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         cv2.polylines(img, [pts], True, random_color, 2)
