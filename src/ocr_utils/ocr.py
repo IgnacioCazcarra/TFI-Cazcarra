@@ -12,7 +12,7 @@ from more_itertools import subslices
        
 
 def get_ocr_model():
-    ocr = PaddleOCR(use_angle_cls=False, show_log=False, det_db_score_mode="slow")
+    ocr = PaddleOCR(use_angle_cls=False, show_log=False, det_db_score_mode="slow", lang="en")
     return ocr
 
 
