@@ -15,19 +15,19 @@ def filter_predictions(predictions, score_threshold=0.5, nms_threshold=0.5):
     return boxes[valid_idx], scores[valid_idx]
 
 
-def draw_bbox(img, xmin, ymin, xmax, ymax): 
+def draw_bbox(img, xmin, ymin, xmax, ymax, color=(255,0,0)): 
     return cv2.rectangle(img, (int(xmin), int(ymin)), (int(xmax), int(ymax)), 
-                         (255,0,0), 1)
+                         color, 1)
 
 
-def visualize_boxes(img, boxes):
+def visualize_boxes(img, boxes, **kwargs):
     img = np.array(img)
     for b in boxes:
         xmin = b[0]
         ymin = b[1]
         xmax = b[2]
         ymax = b[3]
-        img = draw_bbox(img, xmin, ymin, xmax, ymax)
+        img = draw_bbox(img, xmin, ymin, xmax, ymax, **kwargs)
     return Image.fromarray(img)
 
 
