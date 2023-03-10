@@ -9,7 +9,7 @@ import numpy as np
 import itertools
 from paddleocr import PaddleOCR
 from more_itertools import subslices
-       
+  
 
 def get_ocr_model():
     ocr = PaddleOCR(use_angle_cls=False, show_log=False, det_db_score_mode="slow", lang="en")
@@ -68,7 +68,7 @@ def _is_potential_key(attribute, other_tables, lemmatizer):
     if "_id" in attribute or attribute == "id":
         return True 
     for t in other_tables:
-        if t in attribute or lemmatizer(t)[0].lemma_ in attribute:
+        if t in attribute or lemmatizer(t)[0].lemma_ in attribute or get_plural(t, lemmatizer) in attribute:
             return True
     return False
 
@@ -80,14 +80,14 @@ def extract_candidate_keys(table_attributes, other_tables, lang):
 
 def initial_guess_primary_keys(table, candidates, lemmatizer):
     table_lemmatized = lemmatizer(table)[0].lemma_
-    possibilities = ["id", table+"_id", table_lemmatized+"_id", table+"id", table_lemmatized+"_id"]
-    return [p for p in possibilities if p in candidates]
+    table_unlemmatized = get_plural(table, lemmatizer)
+    possibilities = ["id", table+"_id", table_lemmatized+"_id", table+"id", table_lemmatized+"id", table_unlemmatized+"id", table_unlemmatized+"_id"]
+    return list(set([p for p in possibilities if p in candidates]))
 
 
 def is_many_to_many(table, table_candidates, tables_names, pairs, lemmatizer):
     # Con esto deberian quedar solo dos pero hay que preever que pasaría si hay más.
-    matches = [t for t in tables_names if ((t in table) or (get_plural(t, lemmatizer) in table)) and (t!=table)]
-    
+    matches = [t for t in tables_names if ((t in table) or (lemmatizer(t)[0].lemma_ in table) or (get_plural(t, lemmatizer) in table)) and (t!=table)]
     i = 0
     confirmed_matches = []
     flag = False
@@ -229,7 +229,6 @@ def get_foreign_keys(table, all_candidates, pairs, m2m_tables, lemmatizer=None, 
     for pair in pairs:
         if table not in pair:
             continue
-            
         is_auto_fk = False
         if pair[0] == pair[1] and check_auto_fks:
             is_auto_fk = True
@@ -296,23 +295,21 @@ def generate_db(pairs, all_tables, tables_names, lang):
     m2m_tables = []
     # Primera pasada: Extraemos los candidatos y vemos qué tabla es m2m.
     for k, dict_attributes in all_tables.items():
-        candidates = extract_candidate_keys(dict_attributes.keys(), [t for t in tables_names if t != k], lang="en")
+        candidates = extract_candidate_keys(dict_attributes.keys(), [t for t in tables_names if t != k], lang=lang)
         all_candidates[k] = candidates
         if is_many_to_many(k, candidates, tables_names, pairs, lemmatizer=get_lemmatizer(lang)):
             m2m_tables.append(k)
-    
     all_tables_pks = {}
     all_tables_fks = {}
     # Segunda pasada: Se resuelven todas las relaciones menos la de auto fks.
-    for k in all_tables.keys():    
-        pks = {pk: k for pk in initial_guess_primary_keys(k, all_candidates[k], get_lemmatizer(lang="en"))}
+    for k in all_tables.keys():
+        pks = {pk: k for pk in initial_guess_primary_keys(k, all_candidates[k], get_lemmatizer(lang=lang))}
         fks, completed_pairs = get_foreign_keys(table=k, all_candidates=all_candidates, pairs=pairs,\
                                                 m2m_tables=m2m_tables, check_auto_fks=False)
         pairs = get_unchosen(pairs, completed_pairs)
         pks = {**pks, **{pk: k for pk in get_unchosen(all_candidates[k], fks.keys())}}
         all_tables_pks[k] = pks
         all_tables_fks[k] = fks
-        
     all_code = ""
     all_fks_code = ""
     # Tercera pasada: Se completan los auto-fks y se genera el código.
@@ -530,6 +527,8 @@ def clean_texts(texts):
     table_name = get_clean_attribute(table_name) # Para insertarle "_" en caso de que haya falta.
     attributes = {} # K=name, V=type
     for t in texts[1:]:
+        if len(t.strip()) == 1:
+            continue
         attribute, dtype = separate(t, db_name="mysql")
         attributes[attribute.strip()] = dtype
     return table_name, attributes
