@@ -285,7 +285,7 @@ def predict_tiles(img, model, is_yolo, transform, min_size=600, max_size=1333):
                 predictions = model([tensor_tile])[1][0]
             else:
                 predictions = model(tile_img)
-                predictions = {"boxes": predictions.xyxyn[0][:, :4], "scores": predictions.xyxyn[0][:, 4]}
+                predictions = {"boxes": predictions.xyxy[0][:, :4], "scores": predictions.xyxy[0][:, 4]}
             preds_image[str(tile)] = predictions
     unified_results = unify_images(img=img, boxes_per_tile=preds_image)
     return unified_results

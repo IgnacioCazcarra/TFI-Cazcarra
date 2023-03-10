@@ -15,9 +15,9 @@ def filter_predictions(predictions, score_threshold=0.5, nms_threshold=0.5):
     return boxes[valid_idx], scores[valid_idx]
 
 
-def draw_bbox(img, xmin, ymin, xmax, ymax, color=(255,0,0)): 
+def draw_bbox(img, xmin, ymin, xmax, ymax, color=(255,0,0), thickness=1): 
     return cv2.rectangle(img, (int(xmin), int(ymin)), (int(xmax), int(ymax)), 
-                         color, 1)
+                         color, thickness)
 
 
 def visualize_boxes(img, boxes, **kwargs):
@@ -49,7 +49,7 @@ def choose_model(model_name, object_to_predict):
     _validate_model_options(model_name, object_to_predict)
     
     if model_name == "yolov3":
-        num_exp = "exp3" if object_to_predict == "cardinalidades" else "exp5"
+        num_exp = "exp9" if object_to_predict == "cardinalidades" else "exp5"
         return torch.hub.load('ultralytics/yolov5', 'custom', os.path.join(PATH_YOLO, 
                                     num_exp, "weights", f"best_{object_to_predict}.pt"))
     else:

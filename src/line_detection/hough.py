@@ -206,9 +206,10 @@ def plot_results(img, dict_cardinalidades, dict_lines):
             cardinalidades = dict_cardinalidades[k]
             cardinalidades = [literal_eval(card) for card in cardinalidades.split("|")]
             random_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-            cv2.polylines(img, [pts], False, random_color, 2)
+            cv2.polylines(img, [pts], False, random_color, 3)
             for c in cardinalidades:
-                cv2.rectangle(img, c[:2], c[2:], random_color, 2)
+                c = c[0]
+                cv2.rectangle(img, c[:2], c[2:], random_color, 3)
     return Image.fromarray(img)
 
 
@@ -235,9 +236,9 @@ def unify_cardinalidades(img, lines, cardinalidades, plot=False):
             if str(c.tolist()) not in dict_cardinalidades.keys():
                 augment += 2
                 #print(f"Increasing offset to {augment}")
-    if plot:
-        display(plot_results(img, dict_cardinalidades, dict_lines))
     new_dict_cardinalidades = reverse_dict(dict_cardinalidades)
+    if plot:
+        display(plot_results(img, new_dict_cardinalidades, dict_lines))
     return new_dict_cardinalidades
 
 
