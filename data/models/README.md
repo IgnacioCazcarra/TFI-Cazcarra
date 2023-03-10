@@ -8,7 +8,7 @@ sh download_models.sh -o ${output_path}
 ```
 Windows: 
 ```sh
-sh download_models.sh -o ${output_path}
+bash download_models.sh -o ${output_path}
 ```
 
 Example usage:
