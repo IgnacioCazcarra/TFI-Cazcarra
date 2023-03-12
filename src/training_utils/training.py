@@ -55,7 +55,7 @@ def train_model(model, data_loader, data_loader_test, params, device, num_epochs
     
     model_name = model.__class__.__name__.lower()
     if not override_path_final:
-        override_path_final = f"{PATH}/data/models/model_{model_name}_final.pt"
+        override_path_final = f"{PATH}/data/all_models/model_{model_name}_final.pt"
     save_model(path_to_save=override_path_final, model=model, epoch=epoch, 
                loss_value=loss_value)
 
@@ -67,11 +67,6 @@ def save_model(path_to_save, model, epoch, loss_value):
     print("Guardando...")
     model_scripted = torch.jit.script(model)
     model_scripted.save(path_to_save)
-#     torch.save({
-#             'epoch': epoch+1,
-#             'model_state_dict': model.state_dict(),
-#             'loss': loss_value,
-#             }, path_to_save)
     print(f"Modelo guardado en {path_to_save}")
     
     
