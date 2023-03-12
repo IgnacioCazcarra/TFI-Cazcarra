@@ -31,30 +31,19 @@ def visualize_boxes(img, boxes, **kwargs):
     return Image.fromarray(img)
 
 
-def _validate_model_options(model_name, object_to_predict, 
-                            model_types = ['yolov3', 'retinanet', 'fasterrcnn'],
-                            object_types = ['tablas', 'cardinalidades']):
-    if model_name.lower() not in model_types:
-        raise ValueError(f"Opción no válida. Modelos disponibles: {model_types}")
+def _validate_model_options(object_to_predict, object_types = ['tablas', 'cardinalidades']):
     if object_to_predict.lower() not in object_types:
-        raise ValueError(f"Opción no válida. Los modelos disponibles son para los objetos: {object_types}")
+        raise ValueError(f"Opción no válida. Las opciones son: {object_types}")
 
 
-def choose_model(model_name, object_to_predict):
-    print("Por ahora los modelos están en path diferentes. TODO: Habría que unificar.")
-    
-    PATH_MODELS = "/home/nacho/TFI-Cazcarra/data/models"
-    PATH_YOLO = "/home/nacho/TFI-Cazcarra/yolov3/runs/train"
-    
-    _validate_model_options(model_name, object_to_predict)
-    
-    if model_name == "yolov3":
-        num_exp = "exp9" if object_to_predict == "cardinalidades" else "exp5"
-        return torch.hub.load('ultralytics/yolov5', 'custom', os.path.join(PATH_YOLO, 
-                                    num_exp, "weights", f"best_{object_to_predict}.pt"))
+def get_model(object_to_predict, models_path="/home/nacho/TFI-Cazcarra/models"):    
+    _validate_model_options(object_to_predict)
+
+    if object_to_predict == "tablas":
+        return load_model(os.path.join(models_path, f"retinanet_tablas.pt"))
     else:
-        return load_model(os.path.join(PATH_MODELS, f"model_best_{object_to_predict}_{model_name}.pt"))
-
+        return torch.hub.load('ultralytics/yolov5', 'custom', 
+                              os.path.join(models_path, "yolo_cardinalidades.pt"))
 
 
 
