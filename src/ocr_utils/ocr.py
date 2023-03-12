@@ -475,11 +475,12 @@ def sanitize_words(splitted_attribute, mode="english"):
 
 
 def get_clean_attribute(attribute):
-    attribute = attribute.strip()
+    # Correct common error for the attributes. Doesn't affect results.
+    attribute = attribute.strip().replace("I","l")
     if " " in attribute:
         splitted_attribute = attribute.split("_")
         attribute = sanitize_words(splitted_attribute)
-    return attribute.replace("|","l").replace("I","l")
+    return attribute
 
 
 def get_valid_table_att(text_list):
@@ -488,9 +489,12 @@ def get_valid_table_att(text_list):
     i = -1
     while not flag and i < len(text_list)-1:
         i += 1
-        if not text_list[i].isalpha() and not valid:
+        if text_list[i] == "|":
+            # Correct common mistake.
+            valid += "l"
+        elif not text_list[i].isalpha() and not valid:
             continue
-        if text_list[i].isupper() and not valid:
+        elif text_list[i].isupper() and not valid:
             valid += text_list[i]
         elif text_list[i].islower() or text_list[i].isspace() or text_list[i].isdigit() or text_list[i] in ["_","$"]:
             valid += text_list[i]
@@ -518,6 +522,15 @@ def separate(text, db_name="mysql"):
     return attribute, dtype
 
 
+def rename_duplicated_attribute(attributes, attribute):
+    suffix = 1
+    new_key = attribute
+    while attribute in attributes:
+        new_key = f"{attribute}_{suffix}"
+        suffix += 1
+    return new_key
+
+
 def clean_texts(texts):
     if "Indexes" in texts:
         # Todo lo que venga después de Indexes está mal o pertenece a otra cosa.
@@ -530,5 +543,10 @@ def clean_texts(texts):
         if len(t.strip()) == 1:
             continue
         attribute, dtype = separate(t, db_name="mysql")
-        attributes[attribute.strip()] = dtype
+        if attribute.strip() not in attributes.keys():
+            attributes[attribute.strip()] = dtype
+        else:
+            new_key = rename_duplicated_attribute(attributes, attribute.strip())
+            print(f"WARNING: {attribute.strip()} ({dtype}) is already in the table. Renaming it to {new_key}..")
+            attributes[new_key] = dtype
     return table_name, attributes
