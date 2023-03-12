@@ -3,6 +3,7 @@ from .bktree import get_tree, Item
 import re
 import cv2
 import spacy
+import logging
 import jellyfish
 import lemminflect
 import numpy as np
@@ -10,6 +11,8 @@ import itertools
 from paddleocr import PaddleOCR
 from more_itertools import subslices
   
+logging.basicConfig(level = logging.INFO)
+
 
 def get_ocr_model():
     ocr = PaddleOCR(use_angle_cls=False, show_log=False, det_db_score_mode="slow", lang="en")
@@ -284,8 +287,8 @@ def create_code(table, dict_attributes, primary_keys, foreign_keys):
 
 def print_remaining_pairs(pairs):
     for p in pairs:
-        print(f"Relationship between {p} could not be established.") 
-        print("Please check that the attributes are in the correct format.\n")
+        logging.warning(f"Relationship between {p} could not be established.") 
+        logging.warning("Please check that the attributes are in the correct format.\n")
 
 
 def generate_db(pairs, all_tables, tables_names, lang):
@@ -347,7 +350,7 @@ def get_allowed_dtypes(db_name):
         SPATIAL_TYPES = ["GEOMETRY", "POINT", "LINESTRING", "POLYGON"]
         return (STRING_TYPES + NUMERIC_TYPES + DATETIME_TYPES + SPATIAL_TYPES)
     else:
-        print(f"'{db_name}' not supported yet!")
+        logging.error(f"'{db_name}' not supported yet!")
         return []
     
     
@@ -547,6 +550,6 @@ def clean_texts(texts):
             attributes[attribute.strip()] = dtype
         else:
             new_key = rename_duplicated_attribute(attributes, attribute.strip())
-            print(f"WARNING: {attribute.strip()} ({dtype}) is already in the table. Renaming it to {new_key}..")
+            logging.warning(f" {attribute.strip()} ({dtype}) is already in the table. Renaming it to {new_key}..")
             attributes[new_key] = dtype
     return table_name, attributes

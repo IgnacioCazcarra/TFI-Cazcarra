@@ -7,12 +7,15 @@ import os
 import math
 import glob
 import torch
+import logging
 import numpy as np
 import image_bbox_slicer as ibs
 from PIL import Image
 from ast import literal_eval
 from image_bbox_slicer.helpers import * 
 from image_bbox_slicer.slicer import Points
+
+logging.basicConfig(level = logging.INFO)
 
 
 def default_ibs(img_src, ann_src, img_dst, ann_dst):
@@ -256,7 +259,7 @@ def __slice_bboxes(slicer, tile_size, tile_overlap, number_tiles):
             empty_count = 0
         mapper[im_filename] = tile_ids
 
-    print('Obtained {} annotation slices!'.format(img_no-1))
+    logging.info('Obtained {} annotation slices!'.format(img_no-1))
     return mapper
 
 

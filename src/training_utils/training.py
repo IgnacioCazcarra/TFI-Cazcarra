@@ -1,3 +1,4 @@
+import logging
 import torch
 import torchvision
 import numpy as np
@@ -6,6 +7,7 @@ from ..detection.engine import train_one_epoch, evaluate
 from .dataset import PennFudanDataset
 from ..constants import *
 
+logging.basicConfig(level = logging.INFO)
 
 def get_model_instance_segmentation(num_classes, model_type, **kwargs):
     '''
@@ -24,7 +26,7 @@ def get_model_instance_segmentation(num_classes, model_type, **kwargs):
     
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     nbr_params = sum([np.prod(p.size()) for p in model_parameters])
-    print(f"Instancing model {model_type}. Trainable parameters: {nbr_params}")
+    logging.info(f"Instancing model {model_type}. Trainable parameters: {nbr_params}")
     
     return model
 
@@ -64,10 +66,10 @@ def save_model(path_to_save, model, epoch, loss_value):
     '''
     Guarda el modelo
     '''
-    print("Guardando...")
+    logging.info("Guardando...")
     model_scripted = torch.jit.script(model)
     model_scripted.save(path_to_save)
-    print(f"Modelo guardado en {path_to_save}")
+    logging.info(f"Modelo guardado en {path_to_save}")
     
     
 def load_model(path_to_load):
@@ -87,8 +89,8 @@ class SaveBestModel:
     def __call__(self, current_loss, epoch, model, override_path=None):
         if current_loss < self.best_loss:
             self.best_loss = round(current_loss,3)
-            print(f"\nBest loss: {self.best_loss}")
-            print(f"Saving best model for epoch: {epoch+1}\n")
+            logging.info(f"\nBest loss: {self.best_loss}")
+            logging.info(f"Saving best model for epoch: {epoch+1}\n")
             
             if not override_path:
                 model_name = model.__class__.__name__.lower()

@@ -6,7 +6,6 @@ from torchvision import transforms as T
 from sklearn.preprocessing import LabelEncoder
 
 
-
 def get_default_transform(train=False):
     '''
     Transform requerido por la clase PennFudanDataset.

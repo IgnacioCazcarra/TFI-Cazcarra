@@ -1,14 +1,16 @@
 import math
 import random
 import itertools
+import cv2
+import logging
+import numpy as np
+import pandas as pd
 from PIL import Image
 from IPython.display import display
 from copy import deepcopy
 from ast import literal_eval
 
-import cv2
-import numpy as np
-import pandas as pd
+logging.basicConfig(level = logging.INFO)
 
 
 def get_tablas(img_to_search, where_to_search):    
@@ -309,7 +311,7 @@ def sep_line(line, tablas):
         tabla_a = nearest_tabla_from_cardinalidad(cardinalidades[0], tablas)
         tabla_b = nearest_tabla_from_cardinalidad(cardinalidades[1], tablas)
     except Exception as e:
-        print(f"Error al separar tablas! {e}. Chequear las bounding boxes pasadas. Salteando..")
+        logging.warning(f"Error al separar tablas! {e}. Chequear las bounding boxes pasadas. Salteando..")
     finally:
         return (tabla_a, tabla_b)
 
