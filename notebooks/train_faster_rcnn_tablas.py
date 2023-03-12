@@ -56,8 +56,8 @@ init_lr = 0.00005
 weight_decay = init_lr * 100 
 optimizer = torch.optim.AdamW(params, lr=init_lr, weight_decay=weight_decay)
 
-override_path_best = f"{PATH}/data/models/model_best_tablas_fasterrcnn.pt"
-override_path_final = f"{PATH}/data/models/model_final_tablas_fasterrcnn.pt"
+override_path_best = f"{PATH}/data/all_models/model_best_tablas_fasterrcnn.pt"
+override_path_final = f"{PATH}/data/all_models/model_final_tablas_fasterrcnn.pt"
 
 if train:
     train_model(model=model, data_loader=data_loader, data_loader_test=data_loader_test, 

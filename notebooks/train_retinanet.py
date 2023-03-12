@@ -60,7 +60,7 @@ data_loader_test = get_dataloader(dataset_test, batch_size=1, shuffle=False)
 train = True
 epochs = 30
 
-model = get_model_instance_segmentation(num_classes=num_classes, model_type="retinanet", min_size=600)
+model = get_model_instance_segmentation(num_classes=num_classes, model_type="retinanet", min_size=500)
 model.to(device)
 
 params = [p for p in model.parameters() if p.requires_grad]
@@ -69,8 +69,8 @@ init_lr = 0.00005
 weight_decay = init_lr * 100 
 optimizer = torch.optim.AdamW(params, lr=init_lr, weight_decay=weight_decay)
 
-override_path_best = f"{PATH}/data/models/model_best_cardinalidades_retinanet.pt"
-override_path_final = f"{PATH}/data/models/model_final_cardinalidades_retinanet.pt"
+override_path_best = f"{PATH}/data/all_models/model_best_cardinalidades_retinanet.pt"
+override_path_final = f"{PATH}/data/all_models/model_final_cardinalidades_retinanet.pt"
 
 if train:
     train_model(model=model, data_loader=data_loader, data_loader_test=data_loader_test, 
