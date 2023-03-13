@@ -27,20 +27,23 @@ def get_plural(word, lemmatizer):
     return lemmatizer(word)[0]._.inflect('NNS')
 
 
-def extract_from_ocr(coords, results):
+def extract_from_ocr(coords, results, **kwargs):
     all_tables = {}
     tables_names = {}
     for c, r in zip(coords, results):
         boxes = [line[0] for line in r]
         txts = [line[1][0].strip() for line in r]
         scores = [line[1][1] for line in r]
-        table, dict_attributes = clean_texts(txts)
+        table, dict_attributes = clean_texts(txts, **kwargs)
+        if not table and not dict_attributes:
+            # In that case the table was as FP. Need to skip it.
+            continue
         all_tables[table] = dict_attributes
         tables_names[table] = c
     return all_tables, tables_names
 
 
-def predict_ocr(img, tablas, ocr_model, scale_percent=100):
+def predict_ocr(img, tablas, ocr_model, scale_percent=100, lang="en"):
     coords = []
     results = []
     img_arr = img if isinstance(img, np.ndarray) else np.array(img)
@@ -53,7 +56,7 @@ def predict_ocr(img, tablas, ocr_model, scale_percent=100):
 
         coords.append(t.tolist())
         results.append(result[0])
-    return extract_from_ocr(coords, results)
+    return extract_from_ocr(coords=coords, results=results, mode=lang)
 
 
 def pairs_to_names(pairs, tables_names):
@@ -257,7 +260,10 @@ def get_foreign_keys(table, all_candidates, pairs, m2m_tables, lemmatizer=None, 
 def generate_pks_code(pks):
     keys = pks.keys()
     keys = ", ".join(keys)
+    if not keys:
+        return ""
     return f"PRIMARY KEY ({keys})"
+
 
 
 def generate_fks_code(table, fks):
@@ -447,7 +453,7 @@ def get_slices_dict(tree, slices, tolerance=1, top_n=5):
     return slices_dict
         
         
-def sanitize_words(splitted_attribute, mode="english"):
+def sanitize_words(splitted_attribute, mode="en", **kwargs):
     '''
     Sanitizes every word of the attribute.
     '''
@@ -477,12 +483,12 @@ def sanitize_words(splitted_attribute, mode="english"):
     return "_".join(sanitized)
 
 
-def get_clean_attribute(attribute):
+def get_clean_attribute(attribute, **kwargs):
     # Correct common error for the attributes. Doesn't affect results.
     attribute = attribute.strip().replace("I","l")
     if " " in attribute:
         splitted_attribute = attribute.split("_")
-        attribute = sanitize_words(splitted_attribute)
+        attribute = sanitize_words(splitted_attribute, **kwargs)
     return attribute
 
 
@@ -512,11 +518,11 @@ def delim_attribute(text_list):
     return attribute, dtype
 
 
-def separate(text, db_name="mysql"):
+def separate(text, db_name="mysql", **kwargs):
     text_list = sep_text(text)
     text_list = " ".join(text_list)
     attribute, dtype = delim_attribute(text_list)
-    attribute = get_clean_attribute(attribute)
+    attribute = get_clean_attribute(attribute, **kwargs)
     dtype_number = get_dtype_number(dtype)
     dtype = dtype.replace("(", "").replace(")","")
     dtype, _ = get_dtype(dtype, dtypes=get_allowed_dtypes(db_name))
@@ -528,24 +534,28 @@ def separate(text, db_name="mysql"):
 def rename_duplicated_attribute(attributes, attribute):
     suffix = 1
     new_key = attribute
-    while attribute in attributes:
+    while new_key in attributes:
         new_key = f"{attribute}_{suffix}"
         suffix += 1
     return new_key
 
 
-def clean_texts(texts):
+def clean_texts(texts, **kwargs):
+    if not texts or len(texts) <= 1:
+        logging.error("No se encontró texto para una de las tablas. Salteando...")
+        return "", {}
+    
     if "Indexes" in texts:
         # Todo lo que venga después de Indexes está mal o pertenece a otra cosa.
         indexes_idx = texts.index("Indexes")
         texts = texts[:indexes_idx]
     table_name, _ = get_valid_table_att(texts[0].lower()) # Para limpiarlo por si tiene espacios o simbolos.
-    table_name = get_clean_attribute(table_name) # Para insertarle "_" en caso de que haya falta.
+    table_name = get_clean_attribute(table_name, **kwargs) # Para insertarle "_" en caso de que haya falta.
     attributes = {} # K=name, V=type
     for t in texts[1:]:
         if len(t.strip()) == 1:
             continue
-        attribute, dtype = separate(t, db_name="mysql")
+        attribute, dtype = separate(t, db_name="mysql", **kwargs)
         if attribute.strip() not in attributes.keys():
             attributes[attribute.strip()] = dtype
         else:
