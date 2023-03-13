@@ -50,7 +50,9 @@ def poly_detection(img, tablas, cardinalidades):
 #     display(Image.fromarray(edges))
     lines = cv2.HoughLinesP(edges,rho=cv2.HOUGH_PROBABILISTIC, theta=np.pi/180, threshold = 5, \
                             minLineLength=minLineLength, maxLineGap=maxLineGap)
-    
+    if lines is None or len(lines)==0:
+        logging.error("No se encontraron conexiones. Salteando...")
+        lines = []
     return lines, input_image
 
 
@@ -148,9 +150,13 @@ def add_from_end(current_line, without_current, dst_threhold):
 
 
 def hough_detecting(all_points, **kwargs):
+    if not all_points:
+        return []
+    
     final_lines = []
     main_flag = False
     i = 0
+
     while not main_flag:
         if i == 0:
             n, p = next(iter(all_points.items()))
@@ -216,6 +222,8 @@ def plot_results(img, dict_cardinalidades, dict_lines):
 
 
 def unify_cardinalidades(img, lines, cardinalidades, plot=False):
+    if not lines:
+        return {}
     dict_cardinalidades = {}
     dict_lines = {f"line_{i}":l for i,l in enumerate(lines) if len(l)>1}
     matches = 0
