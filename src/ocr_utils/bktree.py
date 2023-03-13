@@ -32,7 +32,7 @@ def spanish_tree():
 
 
 def get_tree(mode):
-    if mode == "english":
+    if mode == "en":
         tree = english_tree()
     else:
         tree = spanish_tree()
