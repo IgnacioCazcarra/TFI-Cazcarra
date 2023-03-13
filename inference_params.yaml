@@ -1,0 +1,9 @@
+tablas:
+  nms_threshold: 0.5
+  score_threshold: 0.75
+cardinalidades:
+  nms_threshold: 0.5
+  score_threshold: 0.5
+ocr:
+  lang: es
+  reescale_percent: 100

@@ -6,7 +6,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog = 'Predict')
     parser.add_argument('--img_path', help="Ubicación de la imagen a predecir.") 
     parser.add_argument('--path_to_save', help="Nombre y ubicación del archivo SQL a generar.", 
-                        default="./untitled_prediction.sql") 
+                        default="./untitled_prediction.sql")
+    parser.add_argument('--yaml_path', help="Ubicación del archivo de configuración YAML. Si no se movió de lugar, no hace falta especificarlo.", 
+                        default="./inference_params.yaml")  
     args = parser.parse_args()
 
-    prediction_wrapper(img_path=args.img_path, path_to_save=args.path_to_save)
+    prediction_wrapper(img_path=args.img_path, path_to_save=args.path_to_save,
+                       yaml_path=args.yaml_path)

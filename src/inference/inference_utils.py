@@ -1,4 +1,5 @@
 import os
+import yaml
 import logging
 from PIL import Image
 from torchvision import transforms as T
@@ -17,10 +18,16 @@ def save_sql(sql_code, path_to_save):
         path_to_save += ".sql"
     with open(path_to_save, 'w') as f:
         f.write(sql_code)
-    logging.info(f"Successfully saved at {path_to_save}..!")
+    logging.info(f"Guardado correctamente en {path_to_save}")
 
 
-def prediction_wrapper(img_path, path_to_save):
+def read_yaml(yaml_path="/home/nacho/TFI-Cazcarra/inference_params.yaml"):
+    with open(yaml_path) as f:
+        config = yaml.load(f, Loader=yaml.SafeLoader)
+    return config
+
+def prediction_wrapper(img_path, path_to_save, yaml_path):
+    config = read_yaml(yaml_path)
     transform = T.Compose([T.ToTensor()])
 
     model_tablas = get_model(object_to_predict="tablas")
@@ -32,22 +39,25 @@ def prediction_wrapper(img_path, path_to_save):
 
     logging.info("Prediciendo tablas...")
     tablas_pred = model_tablas([img_tensor])[1][0]
-    tablas_boxes, _ = filter_predictions(tablas_pred, nms_threshold=0.5, score_threshold=0.5)
+    tablas_boxes, _ = filter_predictions(tablas_pred, 
+                                         nms_threshold=config['tablas']['nms_threshold'], 
+                                         score_threshold=config['tablas']['score_threshold'])
     
     logging.info("Prediciendo cardinalidades...")
     cardinalidades_pred = predict_tiles(img, model=model_cardinalidades, is_yolo=True, 
                                         transform=transform)
-    cardinalidades_boxes, _ = filter_predictions(cardinalidades_pred, nms_threshold=0.5, 
-                                                                score_threshold=0.5)
+    cardinalidades_boxes, _ = filter_predictions(cardinalidades_pred, 
+                                         nms_threshold=config['cardinalidades']['nms_threshold'], 
+                                         score_threshold=config['cardinalidades']['score_threshold'])
     
     logging.info("Generando conexiones...")
-    conexiones = get_pairs(tablas_boxes, cardinalidades_boxes, img=img, plot=True)
+    conexiones = get_pairs(tablas_boxes, cardinalidades_boxes, img=img, plot=False)
 
     logging.info("Reconociendo texto...")
     tablas_boxes = tablas_boxes.detach().numpy().astype(int)
     all_tables, tables_names = predict_ocr(img=img, tablas=tablas_boxes, 
-                                        ocr_model=model_ocr, scale_percent=100)
+                                        ocr_model=model_ocr, scale_percent=config['ocr']['reescale_percent'], lang=config['ocr']['lang'])
     
     logging.info("Generando codigo SQL...")
-    code = generate_db(conexiones, all_tables, tables_names, lang="en")
+    code = generate_db(conexiones, all_tables, tables_names, config['ocr']['lang'])
     save_sql(code, path_to_save)
