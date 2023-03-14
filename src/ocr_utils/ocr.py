@@ -287,6 +287,9 @@ def create_code(table, dict_attributes, primary_keys, foreign_keys):
     fks_code = generate_fks_code(table, foreign_keys)
     if pks_code:
         attributes_code += pks_code
+    else:
+        # Remove ",\n   "
+        attributes_code = attributes_code[:-5]
     code = f" CREATE TABLE {table} ( \n {attributes_code} \n ); \n"
     return code, fks_code
 
