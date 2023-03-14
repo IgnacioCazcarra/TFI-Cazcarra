@@ -1,11 +1,15 @@
 from ..training_utils.training import load_model
 
+import math
 import os
 import cv2
+import logging
 from PIL import Image
 import numpy as np
 import torch
 import torchvision
+
+logging.basicConfig(level = logging.INFO)
 
 
 def filter_predictions(predictions, score_threshold=0.5, nms_threshold=0.5):
@@ -15,19 +19,32 @@ def filter_predictions(predictions, score_threshold=0.5, nms_threshold=0.5):
     return boxes[valid_idx], scores[valid_idx]
 
 
-def draw_bbox(img, xmin, ymin, xmax, ymax, color=(255,0,0), thickness=1): 
+def draw_bbox(img, xmin, ymin, xmax, ymax, color=(255,0,0), thickness=1, score=None):
+    if score:
+        try:
+            THICKNESS_SCALE = 3e-3 
+            FONT_SCALE = 2e-3  # Adjust for larger font size in all images
+            w,h = img.shape[:2]
+            img = cv2.putText(img, str(round(score,2)), (int(xmax)-1,int(ymin)-1), 
+                          cv2.FONT_HERSHEY_SIMPLEX, fontScale=min(w, h)*FONT_SCALE, color=color, 
+                          thickness=math.ceil(min(w, h) * THICKNESS_SCALE), lineType=cv2.LINE_AA)
+        except Exception as e:
+            logging.warn(e)
+            logging.warn("No se pudo graficar el puntaje de la predicción debido a su posición. Salteando..")
     return cv2.rectangle(img, (int(xmin), int(ymin)), (int(xmax), int(ymax)), 
                          color, thickness)
 
 
-def visualize_boxes(img, boxes, **kwargs):
+def visualize_boxes(img, boxes, scores=None, **kwargs):
     img = np.array(img)
-    for b in boxes:
+    if scores is None:
+        scores = [None]*len(boxes)
+    for b,s in zip(boxes, scores):
         xmin = b[0]
         ymin = b[1]
         xmax = b[2]
         ymax = b[3]
-        img = draw_bbox(img, xmin, ymin, xmax, ymax, **kwargs)
+        img = draw_bbox(img, xmin, ymin, xmax, ymax, score=s, **kwargs)
     return Image.fromarray(img)
 
 
