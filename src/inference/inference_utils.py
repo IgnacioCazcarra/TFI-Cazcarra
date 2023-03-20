@@ -56,12 +56,13 @@ def prediction_wrapper(img_path, path_to_save, yaml_path, plot):
                                scores=tablas_scores.tolist())
         img2 = visualize_boxes(img2, cardinalidades_boxes, color=(0,0,255), thickness=3, 
                             scores=cardinalidades_scores.tolist())
-        path_to_save_img, _ = os.path.splitext(path_to_save)
-        path_to_save_img += ".png"
+        basepath_to_save, _ = os.path.splitext(path_to_save)
+        path_to_save_img = basepath_to_save + ".png"
+        path_to_save_conexiones = basepath_to_save + "_conexiones.png"
         img2.save(path_to_save_img)
 
     logging.info("Generando conexiones...")
-    conexiones = get_pairs(tablas_boxes, cardinalidades_boxes, img=img, plot=False)
+    conexiones = get_pairs(tablas_boxes, cardinalidades_boxes, img=img, offset_tablas=config['tablas']['offset'], plot=plot, path_to_save_conexiones=path_to_save_conexiones)
 
     logging.info("Reconociendo texto...")
     tablas_boxes = tablas_boxes.detach().numpy().astype(int)

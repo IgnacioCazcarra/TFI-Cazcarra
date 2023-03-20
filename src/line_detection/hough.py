@@ -221,7 +221,7 @@ def plot_results(img, dict_cardinalidades, dict_lines):
     return Image.fromarray(img)
 
 
-def unify_cardinalidades(img, lines, cardinalidades, plot=False):
+def unify_cardinalidades(img, lines, cardinalidades, plot=False, path_to_save_conexiones=None):
     if not lines:
         return {}
     dict_cardinalidades = {}
@@ -247,8 +247,8 @@ def unify_cardinalidades(img, lines, cardinalidades, plot=False):
                 augment += 2
                 #print(f"Increasing offset to {augment}")
     new_dict_cardinalidades = reverse_dict(dict_cardinalidades)
-    if plot:
-        display(plot_results(img, new_dict_cardinalidades, dict_lines))
+    if plot and path_to_save_conexiones:
+        plot_results(img, new_dict_cardinalidades, dict_lines).save(path_to_save_conexiones)
     return new_dict_cardinalidades
 
 

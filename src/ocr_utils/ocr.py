@@ -70,8 +70,8 @@ def pairs_to_names(pairs, tables_names):
     return new_pairs
 
 
-def _is_potential_key(attribute, other_tables, lemmatizer):
-    if "_id" in attribute or attribute == "id":
+def _is_potential_key(table, attribute, other_tables, lemmatizer):
+    if "_id" in attribute or attribute == "id" or attribute in generate_valid_combs_fk(table, lemmatizer):
         return True 
     for t in other_tables:
         if t in attribute or lemmatizer(t)[0].lemma_ in attribute or get_plural(t, lemmatizer) in attribute:
@@ -79,9 +79,8 @@ def _is_potential_key(attribute, other_tables, lemmatizer):
     return False
 
 
-def extract_candidate_keys(table_attributes, other_tables, lang):
-    lemmatizer = get_lemmatizer(lang)
-    return [attr for attr in table_attributes if _is_potential_key(attr, other_tables, lemmatizer)]
+def extract_candidate_keys(table, table_attributes, other_tables, lemmatizer):
+    return [attr for attr in table_attributes if _is_potential_key(table, attr, other_tables, lemmatizer)]
 
 
 def initial_guess_primary_keys(table, candidates, lemmatizer):
@@ -219,15 +218,13 @@ def is_foreign_key(table, table_pair, table_candidates, table_pair_candidates, l
 
 
 
-def get_foreign_keys(table, all_candidates, pairs, m2m_tables, lemmatizer=None, check_auto_fks=False):
+def get_foreign_keys(table, all_candidates, pairs, m2m_tables, lemmatizer, check_auto_fks=False):
     """
     Ejemplo:
     table -> poems
     candidates -> ['poems_id', 'users_id', 'categories_id']
     pairs -> [('tokens', 'users'), ('poems', 'users'), ('poems', 'categories')]
     """
-    if not lemmatizer:
-        lemmatizer = get_lemmatizer()
     fks = {}
     completed_pairs = []
         
@@ -296,28 +293,29 @@ def create_code(table, dict_attributes, primary_keys, foreign_keys):
 
 def print_remaining_pairs(pairs):
     for p in pairs:
-        logging.warning(f"Relationship between {p} could not be established.") 
-        logging.warning("Please check that the attributes are in the correct format.\n")
+        logging.warning(f"No se pudo establecer la relación entre {p}.") 
+        logging.warning("Por favor, chequear que los atributos estén en el formato correcto.\n")
 
 
 def generate_db(pairs, all_tables, tables_names, lang):
     pairs = pairs_to_names(pairs, tables_names)
-    
+    lemmatizer = get_lemmatizer(lang=lang)
     all_candidates = {}
     m2m_tables = []
     # Primera pasada: Extraemos los candidatos y vemos qué tabla es m2m.
     for k, dict_attributes in all_tables.items():
-        candidates = extract_candidate_keys(dict_attributes.keys(), [t for t in tables_names if t != k], lang=lang)
+        candidates = extract_candidate_keys(table=k, table_attributes=dict_attributes.keys(), 
+                                            other_tables=[t for t in tables_names if t != k], lemmatizer=lemmatizer)
         all_candidates[k] = candidates
-        if is_many_to_many(k, candidates, tables_names, pairs, lemmatizer=get_lemmatizer(lang)):
+        if is_many_to_many(k, candidates, tables_names, pairs, lemmatizer=lemmatizer):
             m2m_tables.append(k)
     all_tables_pks = {}
     all_tables_fks = {}
     # Segunda pasada: Se resuelven todas las relaciones menos la de auto fks.
     for k in all_tables.keys():
-        pks = {pk: k for pk in initial_guess_primary_keys(k, all_candidates[k], get_lemmatizer(lang=lang))}
+        pks = {pk: k for pk in initial_guess_primary_keys(k, all_candidates[k], lemmatizer)}
         fks, completed_pairs = get_foreign_keys(table=k, all_candidates=all_candidates, pairs=pairs,\
-                                                m2m_tables=m2m_tables, check_auto_fks=False)
+                                                m2m_tables=m2m_tables, check_auto_fks=False, lemmatizer=lemmatizer)
         pairs = get_unchosen(pairs, completed_pairs)
         pks = {**pks, **{pk: k for pk in get_unchosen(all_candidates[k], fks.keys())}}
         all_tables_pks[k] = pks
@@ -327,7 +325,7 @@ def generate_db(pairs, all_tables, tables_names, lang):
     # Tercera pasada: Se completan los auto-fks y se genera el código.
     for k, dict_attributes in all_tables.items():
         fks, completed_pairs = get_foreign_keys(table=k, all_candidates=all_candidates, pairs=pairs,\
-                                                m2m_tables=m2m_tables, check_auto_fks=True)
+                                                m2m_tables=m2m_tables, check_auto_fks=True, lemmatizer=lemmatizer)
         pairs = get_unchosen(pairs, completed_pairs)
         if fks:
             all_tables_fks[k] = {**all_tables_fks[k], **fks}

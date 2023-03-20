@@ -1,6 +1,7 @@
 tablas:
   nms_threshold: 0.5
   score_threshold: 0.75
+  offset: 10
 cardinalidades:
   nms_threshold: 0.5
   score_threshold: 0.5
