@@ -259,14 +259,14 @@ def generate_pks_code(pks):
     keys = ", ".join(keys)
     if not keys:
         return ""
-    return f"PRIMARY KEY ({keys})"
+    return f"PRIMARY KEY (`{keys}`)"
 
 
 
 def generate_fks_code(table, fks):
     code = ""
     for fk, table_reference in fks.items():
-        code += f"ALTER TABLE {table} ADD FOREIGN KEY ({fk[0]}) REFERENCES {table_reference}({fk[1]}); \n"
+        code += f"ALTER TABLE `{table}` ADD FOREIGN KEY (`{fk[0]}`) REFERENCES `{table_reference}`(`{fk[1]}`); \n"
     return code
 
 
@@ -277,7 +277,7 @@ def create_code(table, dict_attributes, primary_keys, foreign_keys):
     attributes_code = "  "
     i = 0
     for k, v in dict_attributes.items():
-        attributes_code += k + " " + v           
+        attributes_code += "`" +k+ "`" + " " + v           
         attributes_code += ",\n   "
         i += 1
     pks_code = generate_pks_code(primary_keys)
@@ -287,7 +287,7 @@ def create_code(table, dict_attributes, primary_keys, foreign_keys):
     else:
         # Remove ",\n   "
         attributes_code = attributes_code[:-5]
-    code = f" CREATE TABLE {table} ( \n {attributes_code} \n ); \n"
+    code = f" CREATE TABLE `{table}` ( \n {attributes_code} \n ); \n"
     return code, fks_code
 
 
