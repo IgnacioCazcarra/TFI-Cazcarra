@@ -51,6 +51,7 @@ def prediction_wrapper(img_path, path_to_save, yaml_path, plot):
                                          nms_threshold=config['cardinalidades']['nms_threshold'], 
                                          score_threshold=config['cardinalidades']['score_threshold'])
     
+    path_to_save_conexiones = None
     if plot:
         img2 = visualize_boxes(img, tablas_boxes, color=(0,150,255), thickness=3, 
                                scores=tablas_scores.tolist())
