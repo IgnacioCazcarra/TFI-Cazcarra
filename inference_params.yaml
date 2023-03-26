@@ -5,6 +5,7 @@ tablas:
 cardinalidades:
   nms_threshold: 0.5
   score_threshold: 0.5
+  distance_threshold: 50
 ocr:
   lang: en
   reescale_percent: 100
