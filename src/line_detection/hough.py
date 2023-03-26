@@ -252,9 +252,9 @@ def unify_cardinalidades(img, lines, cardinalidades, plot=False, path_to_save_co
     return new_dict_cardinalidades
 
 
-def clean_cardinalidades(cardinalidades, tablas, distance_threshold=30):
+def clean_cardinalidades(cardinalidades, tablas, distance_threshold=50):
     # Si tiene una tabla a menos de X puntos de distancia..
-    return [c for c in cardinalidades if nearest_tabla_from_cardinalidad(c, tablas, distance_threshold=distance_threshold)]
+    return [idx for idx, c in enumerate(cardinalidades) if nearest_tabla_from_cardinalidad(c, tablas, distance_threshold=distance_threshold)]
 
 
 def find_lines(tablas, cardinalidades, img, offset_tablas=5, **kwargs):
@@ -263,7 +263,6 @@ def find_lines(tablas, cardinalidades, img, offset_tablas=5, **kwargs):
     img, all_lines = apply_hough(img, tablas, [])
     all_points = lines_to_points(all_lines)
     lines = hough_detecting(all_points)
-    cardinalidades = clean_cardinalidades(cardinalidades, tablas)
     return unify_cardinalidades(img, lines, cardinalidades, **kwargs)
 
 
@@ -307,9 +306,11 @@ def nearest_tabla_from_cardinalidad(cardinalidad, tablas, distance_threshold=999
     return [int(c) for c in nearest_tabla.split(",")]
 
 
-def sep_line(line, tablas):
+def sep_line(line, tablas, cardinalidades_labels_dict):
     tabla_a = None
     tabla_b = None
+    card_a_label = None
+    card_b_label = None
     try:
         cardinalidades = line.split("|")
         cardinalidades = [literal_eval(c) for c in cardinalidades]
@@ -318,19 +319,28 @@ def sep_line(line, tablas):
         cardinalidades = sorted(cardinalidades_dist, key=cardinalidades_dist.get)[:2]
         tabla_a = nearest_tabla_from_cardinalidad(cardinalidades[0], tablas)
         tabla_b = nearest_tabla_from_cardinalidad(cardinalidades[1], tablas)
+        card_a_label = cardinalidades_labels_dict[str(cardinalidades[0])]
+        card_b_label = cardinalidades_labels_dict[str(cardinalidades[1])]
     except Exception as e:
         logging.warning(f"Error al separar tablas! {e}. Chequear las bounding boxes pasadas. Salteando..")
     finally:
-        return (tabla_a, tabla_b)
+        return (tabla_a, tabla_b), (card_a_label, card_b_label)
 
-    
-def get_pairs(boxes_tablas, boxes_cardinalidades, img, **kwargs):
+
+def get_pairs(boxes_tablas, boxes_cardinalidades, labels_cardinalidades, img, distance_threshold=50, **kwargs):
     pairs = []
+    pairs_labels = []
     tablas = boxes_tablas.detach().numpy().astype(int)
+
     cardinalidades = boxes_cardinalidades.detach().numpy().astype(int)
-        
+    valid_cardinalidades = clean_cardinalidades(cardinalidades, tablas, distance_threshold=distance_threshold)
+    cardinalidades = cardinalidades[valid_cardinalidades]
+    cardinalidades_labels = labels_cardinalidades.detach().numpy()[valid_cardinalidades]
+    cardinalidades_labels_dict = {str(k.tolist()):v for k,v in zip(cardinalidades, cardinalidades_labels)}
+
     for line_name, line in find_lines(img=img, tablas=tablas, cardinalidades=cardinalidades, **kwargs).items(): 
-        tabla_a, tabla_b = sep_line(line, tablas)
+        (tabla_a, tabla_b), (card_a_label, card_b_label) = sep_line(line, tablas, cardinalidades_labels_dict=cardinalidades_labels_dict)
         if tabla_a and tabla_b:
             pairs.append((tabla_a, tabla_b))
-    return pairs
+            pairs_labels.append((card_a_label, card_b_label))
+    return pairs, pairs_labels

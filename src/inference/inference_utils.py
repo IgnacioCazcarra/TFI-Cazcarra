@@ -1,4 +1,9 @@
 import os
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
+
 import yaml
 import logging
 from PIL import Image
@@ -21,10 +26,15 @@ def save_sql(sql_code, path_to_save):
     logging.info(f"Guardado correctamente en {path_to_save}")
 
 
-def read_yaml(yaml_path="/home/nacho/TFI-Cazcarra/inference_params.yaml"):
+def read_yaml(yaml_path):
     with open(yaml_path) as f:
         config = yaml.load(f, Loader=yaml.SafeLoader)
     return config
+
+
+def check_empty_tables(tablas_boxes):
+    if len(tablas_boxes) == 0 or tablas_boxes is None:
+        raise ValueError("ERROR: No se detectaron tablas. Pruebe bajando los umbrales en el archivo inference_params.yaml")
 
 
 def prediction_wrapper(img_path, path_to_save, yaml_path, plot):
@@ -43,13 +53,14 @@ def prediction_wrapper(img_path, path_to_save, yaml_path, plot):
     tablas_boxes, tablas_scores = filter_predictions(tablas_pred, 
                                          nms_threshold=config['tablas']['nms_threshold'], 
                                          score_threshold=config['tablas']['score_threshold'])
-    
+    check_empty_tables(tablas_boxes)
+
     logging.info("Prediciendo cardinalidades...")
     cardinalidades_pred = predict_tiles(img, model=model_cardinalidades, is_yolo=True, 
                                         transform=transform)
-    cardinalidades_boxes, cardinalidades_scores = filter_predictions(cardinalidades_pred, 
+    cardinalidades_boxes, cardinalidades_scores, cardinalidades_labels = filter_predictions(cardinalidades_pred, 
                                          nms_threshold=config['cardinalidades']['nms_threshold'], 
-                                         score_threshold=config['cardinalidades']['score_threshold'])
+                                         score_threshold=config['cardinalidades']['score_threshold'], return_labels=True)
     
     path_to_save_conexiones = None
     if plot:
@@ -63,7 +74,9 @@ def prediction_wrapper(img_path, path_to_save, yaml_path, plot):
         img2.save(path_to_save_img)
 
     logging.info("Generando conexiones...")
-    conexiones = get_pairs(tablas_boxes, cardinalidades_boxes, img=img, offset_tablas=config['tablas']['offset'], plot=plot, path_to_save_conexiones=path_to_save_conexiones)
+    conexiones, conexiones_labels = get_pairs(boxes_tablas=tablas_boxes, boxes_cardinalidades=cardinalidades_boxes, labels_cardinalidades=cardinalidades_labels,
+                                        img=img, offset_tablas=config['tablas']['offset'], plot=plot, distance_threshold=config['cardinalidades']['distance_threshold'],
+                                        path_to_save_conexiones=path_to_save_conexiones)
 
     logging.info("Reconociendo texto...")
     tablas_boxes = tablas_boxes.detach().numpy().astype(int)
@@ -71,5 +84,5 @@ def prediction_wrapper(img_path, path_to_save, yaml_path, plot):
                                         ocr_model=model_ocr, scale_percent=config['ocr']['reescale_percent'], lang=config['ocr']['lang'])
     
     logging.info("Generando codigo SQL...")
-    code = generate_db(conexiones, all_tables, tables_names, config['ocr']['lang'])
+    code = generate_db(conexiones, conexiones_labels, all_tables, tables_names, config['ocr']['lang'])
     save_sql(code, path_to_save)

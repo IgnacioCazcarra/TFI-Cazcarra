@@ -12,10 +12,13 @@ import torchvision
 logging.basicConfig(level = logging.INFO)
 
 
-def filter_predictions(predictions, score_threshold=0.5, nms_threshold=0.5):
+def filter_predictions(predictions, score_threshold=0.5, nms_threshold=0.5, return_labels=False):
     boxes = predictions['boxes'][predictions['scores'] >= score_threshold]
     scores = predictions['scores'][predictions['scores'] >= score_threshold]
+    labels = predictions['labels'][predictions['scores'] >= score_threshold]
     valid_idx = torchvision.ops.nms(boxes, scores, nms_threshold)
+    if return_labels:
+        return boxes[valid_idx], scores[valid_idx], labels[valid_idx]
     return boxes[valid_idx], scores[valid_idx]
 
 
@@ -60,7 +63,7 @@ def get_model(object_to_predict, models_path="/home/nacho/TFI-Cazcarra/models"):
         return load_model(os.path.join(models_path, f"retinanet_tablas.pt"))
     else:
         return torch.hub.load('ultralytics/yolov5', 'custom', 
-                              os.path.join(models_path, "yolo_cardinalidades.pt"))
+                              os.path.join(models_path, "yolo_cardinalidades.pt"), verbose=False)
 
 
 

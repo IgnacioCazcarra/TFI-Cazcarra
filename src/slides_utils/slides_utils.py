@@ -268,13 +268,15 @@ def unify_images(img, boxes_per_tile):
     first_tile = next(iter(boxes_per_tile.keys()))
     all_boxes = np.array([[]])
     all_scores = np.array([])
+    all_labels = np.array([])
     
     for tile, prediction in boxes_per_tile.items():
         coords_to_add = torch.Tensor(list(map(lambda i,j: i-j, literal_eval(tile), literal_eval(first_tile))))
         boxes = torch.add(prediction['boxes'], coords_to_add, alpha=1).detach().numpy()
         all_boxes = np.append(all_boxes, boxes)
         all_scores = np.append(all_scores, prediction['scores'])
-    return {"boxes": torch.from_numpy(all_boxes.reshape((-1,4))), "scores": torch.from_numpy(all_scores)}
+        all_labels = np.append(all_labels, prediction['labels'])
+    return {"boxes": torch.from_numpy(all_boxes.reshape((-1,4))), "scores": torch.from_numpy(all_scores), "labels": torch.from_numpy(all_labels)}
 
 
 def predict_tiles(img, model, is_yolo, transform, min_size=600, max_size=1333):
@@ -288,7 +290,7 @@ def predict_tiles(img, model, is_yolo, transform, min_size=600, max_size=1333):
                 predictions = model([tensor_tile])[1][0]
             else:
                 predictions = model(tile_img)
-                predictions = {"boxes": predictions.xyxy[0][:, :4], "scores": predictions.xyxy[0][:, 4]}
+                predictions = {"boxes": predictions.xyxy[0][:, :4], "scores": predictions.xyxy[0][:, 4], "labels": predictions.xyxy[0][:, 5]}
             preds_image[str(tile)] = predictions
     unified_results = unify_images(img=img, boxes_per_tile=preds_image)
     return unified_results

@@ -1,5 +1,5 @@
 from .bktree import get_tree, Item
-
+from ..constants import le_dict_cardinalidades
 import re
 import cv2
 import spacy
@@ -218,7 +218,7 @@ def is_foreign_key(table, table_pair, table_candidates, table_pair_candidates, l
 
 
 
-def get_foreign_keys(table, all_candidates, pairs, m2m_tables, lemmatizer, check_auto_fks=False):
+def get_foreign_keys(table, all_candidates, pairs, pairs_labels, m2m_tables, lemmatizer, check_auto_fks=False):
     """
     Ejemplo:
     table -> poems
@@ -227,9 +227,10 @@ def get_foreign_keys(table, all_candidates, pairs, m2m_tables, lemmatizer, check
     """
     fks = {}
     completed_pairs = []
-        
+    le_dict_cardinalidades2 = {v:k for k,v in le_dict_cardinalidades.items()}
+
     table_candidates = all_candidates[table]
-    for pair in pairs:
+    for pair, pair_label in zip(pairs, pairs_labels):
         if table not in pair:
             continue
         is_auto_fk = False
@@ -245,29 +246,39 @@ def get_foreign_keys(table, all_candidates, pairs, m2m_tables, lemmatizer, check
                                                             table_pair_candidates=all_candidates[pair[1]], 
                                                             lemmatizer=lemmatizer, is_auto_fk=is_auto_fk,
                                                             m2m_tables=m2m_tables)
+        
         if is_fk_pair0:
-            fks[(table_att0, pair_att0)] = pair[0]
+            fks[(table_att0, pair_att0)] = (pair[0], le_dict_cardinalidades2[pair_label[0]+1])
             completed_pairs.append(pair)
         elif is_fk_pair1:
-            fks[(table_att1, pair_att1)] = pair[1]
+            fks[(table_att1, pair_att1)] = (pair[1], le_dict_cardinalidades2[pair_label[1]+1])
             completed_pairs.append(pair)
     return fks, completed_pairs
 
 
 def generate_pks_code(pks):
     keys = pks.keys()
-    keys = ", ".join(keys)
+    keys = ", ".join(['`'+ k +'`' for k in keys])
     if not keys:
         return ""
-    return f"PRIMARY KEY (`{keys}`)"
-
+    return f"PRIMARY KEY ({keys})"
 
 
 def generate_fks_code(table, fks):
     code = ""
     for fk, table_reference in fks.items():
-        code += f"ALTER TABLE `{table}` ADD FOREIGN KEY (`{fk[0]}`) REFERENCES `{table_reference}`(`{fk[1]}`); \n"
+        code += f"ALTER TABLE `{table}` ADD FOREIGN KEY (`{fk[0]}`) REFERENCES `{table_reference[0]}`(`{fk[1]}`); \n"
     return code
+
+
+def get_fks_att_type(fks):
+    attributes = {}
+    for fk, table_reference in fks.items():
+        if "opcional" in table_reference[1]:
+            attributes[fk[0]] = " " + "NULL"
+        else:
+            attributes[fk[0]] = " " + "NOT NULL"
+    return attributes
 
 
 def create_code(table, dict_attributes, primary_keys, foreign_keys):
@@ -275,9 +286,14 @@ def create_code(table, dict_attributes, primary_keys, foreign_keys):
     Crea una tabla de MySQL
     '''
     attributes_code = "  "
+    fks_type = get_fks_att_type(fks=foreign_keys)
     i = 0
     for k, v in dict_attributes.items():
-        attributes_code += "`" +k+ "`" + " " + v           
+        attributes_code += "`" +k+ "`" + " " + v
+        if k in primary_keys.keys():
+            attributes_code += " " + "NOT NULL"
+        else:
+            attributes_code += fks_type.get(k, '')
         attributes_code += ",\n   "
         i += 1
     pks_code = generate_pks_code(primary_keys)
@@ -297,7 +313,7 @@ def print_remaining_pairs(pairs):
         logging.warning("Por favor, chequear que los atributos estén en el formato correcto.\n")
 
 
-def generate_db(pairs, all_tables, tables_names, lang):
+def generate_db(pairs, pairs_labels, all_tables, tables_names, lang):
     pairs = pairs_to_names(pairs, tables_names)
     lemmatizer = get_lemmatizer(lang=lang)
     all_candidates = {}
@@ -314,7 +330,7 @@ def generate_db(pairs, all_tables, tables_names, lang):
     # Segunda pasada: Se resuelven todas las relaciones menos la de auto fks.
     for k in all_tables.keys():
         pks = {pk: k for pk in initial_guess_primary_keys(k, all_candidates[k], lemmatizer)}
-        fks, completed_pairs = get_foreign_keys(table=k, all_candidates=all_candidates, pairs=pairs,\
+        fks, completed_pairs = get_foreign_keys(table=k, all_candidates=all_candidates, pairs=pairs, pairs_labels=pairs_labels,\
                                                 m2m_tables=m2m_tables, check_auto_fks=False, lemmatizer=lemmatizer)
         pairs = get_unchosen(pairs, completed_pairs)
         pks = {**pks, **{pk: k for pk in get_unchosen(all_candidates[k], fks.keys())}}
@@ -324,7 +340,7 @@ def generate_db(pairs, all_tables, tables_names, lang):
     all_fks_code = ""
     # Tercera pasada: Se completan los auto-fks y se genera el código.
     for k, dict_attributes in all_tables.items():
-        fks, completed_pairs = get_foreign_keys(table=k, all_candidates=all_candidates, pairs=pairs,\
+        fks, completed_pairs = get_foreign_keys(table=k, all_candidates=all_candidates, pairs=pairs, pairs_labels=pairs_labels,\
                                                 m2m_tables=m2m_tables, check_auto_fks=True, lemmatizer=lemmatizer)
         pairs = get_unchosen(pairs, completed_pairs)
         if fks:
