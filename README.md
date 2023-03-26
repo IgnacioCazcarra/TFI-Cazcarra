@@ -51,7 +51,7 @@ Executing this ERD through the system
 </div>
 <br>
 
-results into this SQL code:
+results into the following SQL code:
 
 ```
 CREATE TABLE `tokens` (
