@@ -21,3 +21,4 @@ more-itertools
 spacy
 lemminflect
 gdown
+Unidecode
