@@ -10,7 +10,8 @@ import numpy as np
 import itertools
 from paddleocr import PaddleOCR
 from more_itertools import subslices
-  
+from unidecode import unidecode
+
 logging.basicConfig(level = logging.INFO)
 
 
@@ -74,7 +75,8 @@ def _is_potential_key(table, attribute, other_tables, lemmatizer):
     if "_id" in attribute or attribute == "id" or attribute in generate_valid_combs_fk(table, lemmatizer):
         return True 
     for t in other_tables:
-        if t in attribute or lemmatizer(t)[0].lemma_ in attribute or get_plural(t, lemmatizer) in attribute:
+        other_tables_valid_combs = generate_valid_combs_fk(t, lemmatizer)
+        if attribute in other_tables_valid_combs:
             return True
     return False
 
@@ -309,8 +311,7 @@ def create_code(table, dict_attributes, primary_keys, foreign_keys):
 
 def print_remaining_pairs(pairs):
     for p in pairs:
-        logging.warning(f"No se pudo establecer la relación entre {p}.") 
-        logging.warning("Por favor, chequear que los atributos estén en el formato correcto.\n")
+        logging.warning(f"No se pudo establecer la relación entre {p}. Por favor, chequear que los atributos estén en el formato correcto.\n") 
 
 
 def generate_db(pairs, pairs_labels, all_tables, tables_names, lang):
@@ -506,7 +507,7 @@ def get_clean_attribute(attribute, **kwargs):
     if " " in attribute:
         splitted_attribute = attribute.split("_")
         attribute = sanitize_words(splitted_attribute, **kwargs)
-    return attribute
+    return unidecode(attribute) 
 
 
 def get_valid_table_att(text_list):
