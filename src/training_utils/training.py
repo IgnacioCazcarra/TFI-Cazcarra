@@ -10,7 +10,7 @@ logging.basicConfig(level = logging.INFO)
 try:
     from ..detection.engine import train_one_epoch, evaluate
 except Exception as e:
-    logging.error("Could not import functions from ..detection.engine file. If you're predicting, ignore this.")
+    logging.error("Could not import functions from 'detection.engine' file. If you're predicting, ignore this.")
 
 
 
