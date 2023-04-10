@@ -1,5 +1,5 @@
 from ..training_utils.training import load_model
-
+from ..constants import PATH
 import math
 import os
 import cv2
@@ -56,7 +56,7 @@ def _validate_model_options(object_to_predict, object_types = ['tablas', 'cardin
         raise ValueError(f"Opción no válida. Las opciones son: {object_types}")
 
 
-def get_model(object_to_predict, models_path="/home/nacho/TFI-Cazcarra/models"):    
+def get_model(object_to_predict, models_path=os.path.join(PATH, "models")):    
     _validate_model_options(object_to_predict)
 
     if object_to_predict == "tablas":
