@@ -1,5 +1,5 @@
 from .bktree import get_tree, Item
-from ..constants import le_dict_cardinalidades
+from .. import constants
 import re
 import cv2
 import spacy
@@ -229,7 +229,7 @@ def get_foreign_keys(table, all_candidates, pairs, pairs_labels, m2m_tables, lem
     """
     fks = {}
     completed_pairs = []
-    le_dict_cardinalidades = {v:k for k,v in le_dict_cardinalidades.items()} # reverse it
+    le_dict_cardinalidades = {v:k for k,v in constants.le_dict_cardinalidades.items()} # reverse it
 
     table_candidates = all_candidates[table]
     for pair, pair_label in zip(pairs, pairs_labels):
