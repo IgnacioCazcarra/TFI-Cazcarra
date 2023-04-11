@@ -1,5 +1,5 @@
 from .bktree import get_tree, Item
-from ..constants import le_dict_cardinalidades
+from .. import constants
 import re
 import cv2
 import spacy
@@ -16,7 +16,7 @@ logging.basicConfig(level = logging.INFO)
 
 
 def get_ocr_model():
-    ocr = PaddleOCR(use_angle_cls=False, show_log=False, det_db_score_mode="slow", lang="en")
+    ocr = PaddleOCR(ocr_version='PP-OCRv3', use_angle_cls=False, show_log=False, det_db_score_mode="slow", lang="en")
     return ocr
 
 
@@ -229,7 +229,7 @@ def get_foreign_keys(table, all_candidates, pairs, pairs_labels, m2m_tables, lem
     """
     fks = {}
     completed_pairs = []
-    le_dict_cardinalidades2 = {v:k for k,v in le_dict_cardinalidades.items()}
+    le_dict_cardinalidades = {v:k for k,v in constants.le_dict_cardinalidades.items()} # reverse it
 
     table_candidates = all_candidates[table]
     for pair, pair_label in zip(pairs, pairs_labels):
@@ -250,10 +250,10 @@ def get_foreign_keys(table, all_candidates, pairs, pairs_labels, m2m_tables, lem
                                                             m2m_tables=m2m_tables)
         
         if is_fk_pair0:
-            fks[(table_att0, pair_att0)] = (pair[0], le_dict_cardinalidades2[pair_label[0]+1])
+            fks[(table_att0, pair_att0)] = (pair[0], le_dict_cardinalidades[pair_label[0]+1])
             completed_pairs.append(pair)
         elif is_fk_pair1:
-            fks[(table_att1, pair_att1)] = (pair[1], le_dict_cardinalidades2[pair_label[1]+1])
+            fks[(table_att1, pair_att1)] = (pair[1], le_dict_cardinalidades[pair_label[1]+1])
             completed_pairs.append(pair)
     return fks, completed_pairs
 

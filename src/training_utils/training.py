@@ -2,12 +2,17 @@ import logging
 import torch
 import torchvision
 import numpy as np
-
-from ..detection.engine import train_one_epoch, evaluate
 from .dataset import PennFudanDataset
 from ..constants import *
 
 logging.basicConfig(level = logging.INFO)
+
+try:
+    from ..detection.engine import train_one_epoch, evaluate
+except Exception as e:
+    logging.error("Could not import functions from 'detection.engine' file. If you're predicting, ignore this.")
+
+
 
 def get_model_instance_segmentation(num_classes, model_type, **kwargs):
     '''
@@ -57,7 +62,7 @@ def train_model(model, data_loader, data_loader_test, params, device, num_epochs
     
     model_name = model.__class__.__name__.lower()
     if not override_path_final:
-        override_path_final = f"{PATH}/data/all_models/model_{model_name}_final.pt"
+        override_path_final = os.path.join(PATH, "data", "all_models", f"model_{model_name}_final.pt")
     save_model(path_to_save=override_path_final, model=model, epoch=epoch, 
                loss_value=loss_value)
 
@@ -94,7 +99,7 @@ class SaveBestModel:
             
             if not override_path:
                 model_name = model.__class__.__name__.lower()
-                PATH_TO_SAVE_MODEL = f"{PATH}/data/models/best_model_{model_name}.pt"
+                PATH_TO_SAVE_MODEL = os.path.join(PATH, "data", "models", f"best_model_{model_name}.pt")
             else:
                 PATH_TO_SAVE_MODEL = override_path
                 

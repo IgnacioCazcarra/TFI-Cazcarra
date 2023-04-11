@@ -12,8 +12,9 @@ Converting ER Diagrams to .sql scripts using neural networks.
 For predicting an image, the steps are the following:
 
 1) Create an environment and install the packages in requirements.txt
-2) Download the models. See models/ for more info.
-3) Execute predict.py
+2) Execute the ```setup.py``` file.
+3) Download the models. See models/ for more info.
+4) Execute predict.py
 
 Example usage:
 

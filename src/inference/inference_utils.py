@@ -1,8 +1,11 @@
 import os
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
-tf.get_logger().setLevel('ERROR')
+
+try:
+    tf.get_logger().setLevel('ERROR')
+except Exception as e:
+    pass # We do not want to do anything as it's not really necessary...
 
 import yaml
 import logging
@@ -23,7 +26,7 @@ def save_sql(sql_code, path_to_save):
         path_to_save += ".sql"
     with open(path_to_save, 'w') as f:
         f.write(sql_code)
-    logging.info(f"Guardado correctamente en {path_to_save}")
+    logging.info(f"Código SQL Guardado correctamente en {path_to_save}")
 
 
 def read_yaml(yaml_path):
