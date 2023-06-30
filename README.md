@@ -43,6 +43,10 @@ Currently available parameters are:
 - **reescale_percent**: Percentage of reescale for tables. Default at 100 (no reescale).
 
 
+Overall, using default values for the parameters is okay. If there are cases where there's some hard false positives that make it difficult or there's elements that are not detected, one trick is to set nms_threshold to some very low value (e.g. 0.01) and lower the object detection threshold aswell, ensuring that:
+- If there's false positives that interfere with true positives, the nms will suppress them.
+- If there's some difficult cases of detection, the lower threshold will take care of that.
+
 ## Example
 
 Executing this ERD through the system
