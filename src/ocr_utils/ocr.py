@@ -37,6 +37,7 @@ def extract_from_ocr(coords, results, **kwargs):
         scores = [line[1][1] for line in r]
         table, dict_attributes = clean_texts(txts, **kwargs)
         if not table and not dict_attributes:
+            logging.info(f"Removing table in coordinates {c}")
             # In that case the table was as FP. Need to skip it.
             continue
         all_tables[table] = dict_attributes
@@ -65,9 +66,12 @@ def pairs_to_names(pairs, tables_names):
     tables_names = {str(v):k for k,v in tables_names.items()}
     
     for pair in pairs:
-        tabla_a, tabla_b = pair
-        tabla_a, tabla_b = tables_names[str(tabla_a)], tables_names[str(tabla_b)]
-        new_pairs.append((tabla_a, tabla_b))
+        try:
+            tabla_a, tabla_b = pair
+            tabla_a, tabla_b = tables_names[str(tabla_a)], tables_names[str(tabla_b)]
+            new_pairs.append((tabla_a, tabla_b))
+        except KeyError as e:
+            logging.warn(f"Skipping pair of tables {str(tabla_a)} {str(tabla_b)} because one is a false positive.")
     return new_pairs
 
 

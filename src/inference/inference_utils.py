@@ -68,9 +68,9 @@ def prediction_wrapper(img_path, path_to_save, yaml_path, plot):
     path_to_save_conexiones = None
     if plot:
         img2 = visualize_boxes(img, tablas_boxes, color=(0,150,255), thickness=3, 
-                               scores=tablas_scores.tolist())
+                               scores=None)
         img2 = visualize_boxes(img2, cardinalidades_boxes, color=(0,0,255), thickness=3, 
-                            scores=cardinalidades_scores.tolist())
+                            scores=None)
         basepath_to_save, _ = os.path.splitext(path_to_save)
         path_to_save_img = basepath_to_save + ".png"
         path_to_save_conexiones = basepath_to_save + "_conexiones.png"
