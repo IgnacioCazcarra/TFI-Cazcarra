@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+    <title>User Preferences</title>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/preferences">Preferences</a>
+        </nav>
+    </header>
+    <div class="content">
+        <div class="title">Preferences</div>
+        <p class="preferences-title">Tables:</p>
+        <div class="input-row">
+            <p>Non-max suppression threshold</p>
+            <input type="text" class="custom-input" placeholder="" id="table-nms_threshold">
+            <p>Score threshold</p>
+            <input type="text" class="custom-input" placeholder="" id="table-score_threshold">
+            <p>Offset</p>
+            <input type="text" class="custom-input" placeholder="" id="table-offset">
+        </div>
+        <p class="preferences-title">Cardinalities:</p>
+        <div class="input-row">
+            <p>Non-max suppression threshold</p>
+            <input type="text" class="custom-input" placeholder="" id="cardinality-nms_threshold">
+            <p>Score threshold</p>
+            <input type="text" class="custom-input" placeholder="" id="cardinality-score_threshold">
+            <p>Distance threshold</p>
+            <input type="text" class="custom-input" placeholder="" id="cardinality-distance_threshold">
+        </div>
+        <p class="preferences-title">OCR:</p>
+        <div class="input-row">
+            <p> Language</p>
+            <select name="select" class="custom-input" id="ocr-language">
+                <option value="en" selected>English</option>
+                <option value="es">Spanish</option>
+            </select>
+            <p>Reescale percentage</p>
+            <input type="text" class="custom-input" placeholder=""  id="ocr-reescale">
+        </div>
+        <div class="button-container" style="padding-top: 25px;">
+            <button class="custom-button" id="savePreferencesButton">Save</button>
+        </div>
+        <div class="title" style="padding-top: 50px;">Instructions</div>
+        <div class="instructions">
+            <p class="preferences-title">For 'tables':</p>
+            <ul>
+                <p><strong>nms_threshold:</strong> Non Maximum Suppression threshold for object 'table'. Unless there's some very specific case, it's better off to leave it with the default value (0.5)</p>
+                <p><strong>score_threshold:</strong> Filters every prediction with score confidence lesser than score_threshold variable.</p>
+                <p><strong>offset:</strong> Offset when suppressing tables at the moment of finding connections between tables. Useful when the bounding box doesn't fully cover the tables.</p>
+            </ul>
+            <p class="preferences-title">For 'cardinalities':</p>
+            <ul>
+                <p><strong>nms_threshold:</strong> Non Maximum Suppression threshold for object 'table'. Unless there's some very specific case, it's better off to leave it with the default value (0.5)</p>
+                <p><strong>score_threshold:</strong> Filters every prediction with score confidence lesser than score_threshold variable.</p>
+                <p><strong>distance_threshold:</strong> Clean every object 'cardinality' if the nearest table is farther than 'distance_threshold' pixels.</p>
+            </ul>
+            <p class="preferences-title">For 'ocr':</p>
+            <ul>
+                <p><strong>lang:</strong> Language of the ERD to transform. Conditions the matching of foreign keys and the transcription algorithm.</p>
+                <p><strong>reescale_percent:</strong> Percentage of reescale for tables. Default at 100 (no reescale).</p>
+            </ul>
+        </div>
+    </div>
+    <div class="footer">
+        © 2023 Ignacio Cazcarra
+    </div>
+</body>
+<script src="/static/js/preferences.js"></script>
+</html>

@@ -1,18 +1,9 @@
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import tensorflow as tf
-
-try:
-    tf.get_logger().setLevel('ERROR')
-except Exception as e:
-    pass # We do not want to do anything as it's not really necessary...
-
 import yaml
+import pprint
 import logging
-from PIL import Image
 from torchvision import transforms as T
 
-from ..detection.prediction_utils import get_model, filter_predictions, visualize_boxes
+from ..detection.prediction_utils import get_model, filter_predictions
 from ..slides_utils.slides_utils import predict_tiles
 from ..line_detection.hough import get_pairs
 from ..ocr_utils.ocr import get_ocr_model, predict_ocr, generate_db
@@ -20,13 +11,13 @@ from ..ocr_utils.ocr import get_ocr_model, predict_ocr, generate_db
 logging.basicConfig(level = logging.INFO)
 
 
-def save_sql(sql_code, path_to_save):
-    name, ext = os.path.splitext(path_to_save)
-    if not ext:
-        path_to_save += ".sql"
-    with open(path_to_save, 'w') as f:
-        f.write(sql_code)
-    logging.info(f"Código SQL Guardado correctamente en {path_to_save}")
+def style_code(sql_code):
+    sql_code = pprint.pformat(sql_code, indent=2).strip().replace("'","").replace("\\n","")
+    if sql_code.startswith("("):
+        sql_code = sql_code[1:]
+    if sql_code.endswith(")"):
+        sql_code = sql_code[:-1]
+    return sql_code
 
 
 def read_yaml(yaml_path):
@@ -35,20 +26,25 @@ def read_yaml(yaml_path):
     return config
 
 
+def update_yaml(data, yaml_path):
+    with open(yaml_path, "w") as file:
+        yaml.dump(data, file)
+
+
 def check_empty_tables(tablas_boxes):
     if len(tablas_boxes) == 0 or tablas_boxes is None:
         raise ValueError("ERROR: No se detectaron tablas. Pruebe bajando los umbrales en el archivo inference_params.yaml")
 
 
-def prediction_wrapper(img_path, path_to_save, yaml_path, plot):
-    config = read_yaml(yaml_path)
+def api_prediction_wrapper(img, config):
+    config = read_yaml(yaml_path="/TFI-Cazcarra/inference_params.yaml")
+
     transform = T.Compose([T.ToTensor()])
 
     model_tablas = get_model(object_to_predict="tablas")
     model_cardinalidades = get_model(object_to_predict="cardinalidades")
     model_ocr = get_ocr_model()
 
-    img = Image.open(img_path).convert("RGB")
     img_tensor = transform(img)
 
     logging.info("Prediciendo tablas...")
@@ -65,21 +61,10 @@ def prediction_wrapper(img_path, path_to_save, yaml_path, plot):
                                          nms_threshold=config['cardinalidades']['nms_threshold'], 
                                          score_threshold=config['cardinalidades']['score_threshold'], return_labels=True)
     
-    path_to_save_conexiones = None
-    if plot:
-        img2 = visualize_boxes(img, tablas_boxes, color=(0,150,255), thickness=3, 
-                               scores=None)
-        img2 = visualize_boxes(img2, cardinalidades_boxes, color=(0,0,255), thickness=3, 
-                            scores=None)
-        basepath_to_save, _ = os.path.splitext(path_to_save)
-        path_to_save_img = basepath_to_save + ".png"
-        path_to_save_conexiones = basepath_to_save + "_conexiones.png"
-        img2.save(path_to_save_img)
 
     logging.info("Generando conexiones...")
     conexiones, conexiones_labels = get_pairs(boxes_tablas=tablas_boxes, boxes_cardinalidades=cardinalidades_boxes, labels_cardinalidades=cardinalidades_labels,
-                                        img=img, offset_tablas=config['tablas']['offset'], plot=plot, distance_threshold=config['cardinalidades']['distance_threshold'],
-                                        path_to_save_conexiones=path_to_save_conexiones)
+                                        img=img, offset_tablas=config['tablas']['offset'], distance_threshold=config['cardinalidades']['distance_threshold'])
 
     logging.info("Reconociendo texto...")
     tablas_boxes = tablas_boxes.detach().numpy().astype(int)
@@ -88,4 +73,5 @@ def prediction_wrapper(img_path, path_to_save, yaml_path, plot):
     
     logging.info("Generando codigo SQL...")
     code = generate_db(conexiones, conexiones_labels, all_tables, tables_names, config['ocr']['lang'])
-    save_sql(code, path_to_save)
+
+    return code

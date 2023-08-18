@@ -6,7 +6,6 @@ import logging
 import numpy as np
 import pandas as pd
 from PIL import Image
-from IPython.display import display
 from copy import deepcopy
 from ast import literal_eval
 

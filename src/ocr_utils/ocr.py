@@ -273,7 +273,7 @@ def generate_pks_code(pks):
 def generate_fks_code(table, fks):
     code = ""
     for fk, table_reference in fks.items():
-        code += f"ALTER TABLE `{table}` ADD FOREIGN KEY (`{fk[0]}`) REFERENCES `{table_reference[0]}`(`{fk[1]}`); \n"
+        code += f"ALTER TABLE `{table}` ADD FOREIGN KEY (`{fk[0]}`) REFERENCES `{table_reference[0]}` (`{fk[1]}`); \n"
     return code
 
 
