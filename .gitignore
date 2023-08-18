@@ -1,5 +1,6 @@
 data/
-*__pycache__/*
+!data/images_extra/
+*__pycache__/
 *.ipynb_checkpoints*
 venv/
 *.pth

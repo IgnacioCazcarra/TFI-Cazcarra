@@ -1,0 +1,184 @@
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 100vh;
+    background-color: #f0f0f0;
+    font-family: Arial, sans-serif;
+}
+label {
+    box-sizing: border-box
+}
+
+.content {
+    text-align: center;
+    margin-top: 7vh;
+    width: 75%
+}
+
+.title {
+    font-weight: bold;
+    font-size: 36px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.description {
+    font-size: 18px;
+    color: #666;
+    margin-bottom: 10vh;
+}
+
+.preferences-title {
+    font-size: 18px;
+    color: #121212;
+    margin-top: 5vh;
+}
+
+.button-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.custom-button, .image-input {
+    padding: 10px 20px;
+    background-color: #f0f0f0;
+    color: #333;
+    border: 2px solid #333;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 16px;
+    transition: background-color 0.3s, color 0.3s;
+    margin-bottom: 10px;
+    width: 180px;
+}
+
+.custom-button:hover {
+    background-color: #333;
+    color: #f0f0f0;
+}
+
+.footer {
+    padding: 10px;
+    color: white;
+    text-align: center;
+    width: 100%;
+    color: #333;
+}
+
+.custom-input {
+    padding: 10px 20px;
+    background-color: #f0f0f0;
+    color: #333;
+    border: 2px solid #333;
+    border-radius: 5px;
+    font-size: 16px;
+    transition: background-color 0.3s, color 0.3s;
+    margin-bottom: 10px; 
+    width: 360px;
+}
+
+.upload{
+    display:none
+}
+
+.submit{
+    display:none
+}
+
+.input-container {
+    display: flex;
+    align-items: center;
+    justify-content: center; 
+    gap: 10px;
+}
+
+.preview-container{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 25px;
+}
+
+.imagePreview{
+    width: 35%;
+    height: 35%;
+}
+
+.selected-image {
+    border: 1px solid #333; /* Add your desired styling here */
+}
+
+.blinking-cursor {
+    background-color: #fff;
+    animation: blink 0.25s infinite;
+  }
+  @keyframes blink {
+    0%, 50% {
+      opacity: 1;
+    }
+    50.1%, 100% {
+      opacity: 0;
+    }
+  }
+
+
+.box-container {
+    padding-left: 10px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: opacity 1s ease;
+}
+
+#typewriter{
+    width:720px;
+}
+
+.hidden {
+    opacity: 0;
+}
+
+.input-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.input-row p {
+    margin-right: 10px;
+    margin-left: 25px;
+}
+
+header {
+    width: 100%;
+    color: white;
+    padding: 1rem 0;
+    text-align: center;
+}
+
+nav {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+nav a {
+    color: #333;
+    text-decoration: none;
+    transition: color 0.3s ease;
+    font-size: 18px;
+}
+
+.instructions{
+    text-align: left;
+}

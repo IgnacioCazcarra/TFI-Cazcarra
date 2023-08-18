@@ -11,32 +11,31 @@ Converting ER Diagrams to .sql scripts using neural networks.
 ## Predictions
 For predicting an image, the steps are the following:
 
-1) Create an environment and install the packages in requirements.txt
-2) Execute the ```setup.py``` file.
-3) Download the models. See models/ for more info.
-4) Execute predict.py
+1) Install [Docker](https://docs.docker.com/engine/install/)
+2) Build the Dockerfile with ```docker build -t tfi .```
+3) Once the build has finished, run the container with ```docker run -p 8080:8080 tfi```
+4) Enter http://localhost:8080/ and select the image to convert into SQL code.
+5) Click on 'Convert' and wait for the system to return the SQL code.
 
-Example usage:
-
-```
-python predict.py --img_path ./imagenes/imagen.png --path_to_save ./resultados/resultados_imagen.sql
-```
+<div align="center">
+    <img src="./data/images_extra/ui.png" width="800">
+</div>
 
 
 ## Inference parameters
 
-Depending on the characteristics of each ERD or on the initial results we got from the predictions, we can adjust the values in the ```inference_params.yaml``` file to get better results.
+Depending on the characteristics of each ERD or on the initial results we got from the predictions, we can adjust the values in the ```inference_params.yaml``` file to get better results. This can be done by modifying the YAML or by updating the preferences in the UI.
 Currently available parameters are:
 
-### For 'tablas':
-- **nms_threshold**: Non Maximum Suppression threshold for object 'tabla'. Unless there's some very specific case, it's better off to leave it with the default value (0.5)
+### For 'tables':
+- **nms_threshold**: Non Maximum Suppression threshold for object 'table'. Unless there's some very specific case, it's better off to leave it with the default value (0.5)
 - **score_threshold**: Filters every prediction with score confidence lesser than score_threshold variable. If the initial predictions are not good, one can set a good threshold by seeing the predictions with the ```--plot``` flag at the moment of predicting.
 - **offset**: Offset when suppressing tables at the moment of finding connections between tables. Useful when the bounding box doesn't fully cover the tables.
 
-### For 'cardinalidades':
-- **nms_threshold**: Non Maximum Suppression threshold for object 'tabla'. Unless there's some very specific case, it's better off to leave it with the default value (0.5)
+### For 'cardinalities':
+- **nms_threshold**: Non Maximum Suppression threshold for object 'table'. Unless there's some very specific case, it's better off to leave it with the default value (0.5)
 - **score_threshold**: Filters every prediction with score confidence lesser than score_threshold variable. If the initial predictions are not good, one can set a good threshold by seeing the predictions with the ```--plot``` flag at the moment of predicting.
-- **distance_threshold**: Clean every object 'cardinalidad' if the nearest table is farther than ```distance_threshold``` pixels.
+- **distance_threshold**: Clean every object 'cardinality' if the nearest table is farther than ```distance_threshold``` pixels.
 
 ### For 'ocr':
 - **lang**: Language of the ERD to transform. Conditions the matching of foreign keys and the transcription algorithm.
