@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+    <title>ERD Forward Engineering</title>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/preferences">Preferences</a>
+        </nav>
+    </header>
+    <div class="content">
+        <div class="title">ERD Forward Engineering using Neural Networks</div>
+        <div class="description">Convert your non-MySQL Entity-Relationship Diagrams into SQL code with just one click</div>
+        <input type="file" name="upload" id="upload" class="upload" accept=".png, .jpg, .jpeg"/>
+        <input type="submit" name="submit" id="submit" class="submit">
+        <div class="input-container">
+            <input type="text" class="custom-input" placeholder="No file selected." id="imagePathInput" disabled>
+            <label for="upload" class="custom-button" id="chooseImageButton">Choose Image</label>            
+        </div>
+        <div class="preview-container">
+            <img id="imagePreview" class="imagePreview" src="#" alt="">
+        </div>
+        <div class="button-container">
+            <button class="custom-button" id="convertButton">Convert</button>
+        </div>
+    </div>
+    <div class="box-container hidden">
+        <p id="typewriter"></p>
+    </div>
+    <div class="footer">
+        © 2023 Ignacio Cazcarra
+    </div>
+</body>
+<script src="/static/js/home_utils.js"></script>
+</html>

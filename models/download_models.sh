@@ -10,8 +10,6 @@ usage () {
     echo ""
     echo "  --output_folder string  Dirección donde guardar los modelos. Default: directorio donde se está parado"
     echo "                          (example: sh download_models.sh --output_folder ./carpeta/)"
-    echo "  --all boolean           Flag para descargar todos los modelos. Por un tema de uso y tamaño, es recomendable no hacerlo."
-    echo "                          (example: sh download_models.sh --output_folder ./carpeta/ --all)"
     echo ""
 }
 
@@ -21,12 +19,8 @@ while [ $# -gt 0 ]; do
         exit 0
     elif [[ $1 == "--"* ]]; then
         v="${1/--/}"
-        if [[ $v == "all" ]]; then
-            all="true"
-        else
-            declare "$v"="$2"
-            shift
-        fi
+        declare "$v"="$2"
+        shift
     fi
     shift
 done
@@ -40,9 +34,5 @@ if [[ -z $output_folder ]]; then
     echo "Not output_folder supplied. Saving to $output_folder"
 fi
 
-if [[ $all == "true" ]]; then
-    gdown $gdrive_folder --output $output_folder --folder
-else
-    gdown $tablas --output $output_folder
-    gdown $cardinalidades --output $output_folder
-fi
+gdown $tablas --output $output_folder
+gdown $cardinalidades --output $output_folder
