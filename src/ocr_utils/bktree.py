@@ -4,11 +4,11 @@ import jellyfish
 import pybktree
 
 
-class Item():
+class Item:
     def __init__(self, value):
         self.value = value
 
-        
+
 def item_distance(x, y):
     return jellyfish.levenshtein_distance(x.value, y.value)
 
@@ -27,7 +27,7 @@ def spanish_tree():
     words_path = os.path.join(curr_dir, "words_spanish.txt")
     with open(words_path, "rb") as f:
         spanish_words = f.readlines()
-    spanish_words = [s.decode('utf8').replace("\n", "") for s in spanish_words]
+    spanish_words = [s.decode("utf8").replace("\n", "") for s in spanish_words]
     return pybktree.BKTree(item_distance, [Item(w) for w in spanish_words])
 
 

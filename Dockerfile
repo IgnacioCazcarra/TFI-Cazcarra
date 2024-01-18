@@ -2,12 +2,7 @@ FROM python:3.8
 
 WORKDIR /TFI-Cazcarra
 
-COPY ./api /TFI-Cazcarra/api
-COPY ./src /TFI-Cazcarra/src
-COPY ./models /TFI-Cazcarra/models
-COPY ./setup.py /TFI-Cazcarra/setup.py
-COPY ./requirements.txt /TFI-Cazcarra/requirements.txt
-COPY ./inference_params.yaml /TFI-Cazcarra/inference_params.yaml
+COPY . .
 
 RUN apt install dpkg
 RUN apt install wget
